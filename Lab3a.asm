@@ -18,7 +18,6 @@ TTotalRef           EQU     $1004
 VDelta              EQU     $1006
 VConstant           EQU     $100A
 TTotal              EQU     $100C
-Temp				EQU		$1100
 RightVelocity       EQU     $2000
 LeftVelocity        EQU     $2100
 ;******************************* End Symbols **********************************;
@@ -45,7 +44,7 @@ MAIN                ORG     $2200   	    ;Starting Address
 					PULD
 					PULD
 					PULD
-					LDD     #Temp
+					LDD     #$1000
                     PSHD
                     LDD     #LeftVelocity
                     PSHD
@@ -54,13 +53,6 @@ MAIN                ORG     $2200   	    ;Starting Address
                     LDD     VDelta
                     PSHD
                     JSR     PARSE_INTERVAL
-
-                    ;( 0 ) - Return Address - Value     - 16 bits - Input
-                    ;( 2 ) - VDelta         - Reference - 16 bits - Input
-                    ;( 4 ) - RightVelocity  - Reference - 16 bits - Output
-                    ;( 6 ) - LeftVelocity   - Reference - 16 bits - Output
-                    LEAS    $10,SP
-                    SWI
 END_MAIN            END
 ;********************************* End Main ***********************************;
 
@@ -105,14 +97,15 @@ END_CALC_INTERVAL   RTS
 ;( 2 ) - VDelta         - Reference - 16 bits - Input
 ;( 4 ) - RightVelocity  - Reference - 16 bits - Output
 ;( 6 ) - LeftVelocity   - Reference - 16 bits - Output
-;( 8 ) - Temp           - Reference - 16 bits - Output
 ;******************************************************************************;
 PARSE_INTERVAL      LDX     6,SP            ;Left Velocity
                     LDY     4,SP            ;Right Velocity
                     LDD		#$0000
+					STD	    2,X+
+                    STD     2,Y+
                     PSHD
                     LDAA    #$00
-WHILE_1             CMPA    #$0A            ;While A != 10
+WHILE_1             CMPA    #$09            ;While A != 9
                     BEQ     END_WHILE_1     ;{
                     PSHA                    ;    Throw A into stack (8 bits)
                     LDD		1,SP            ;    D is the current velocity that it is being incremented
@@ -122,8 +115,42 @@ WHILE_1             CMPA    #$0A            ;While A != 10
                     STD		1,SP            ;    Store the current value of D
                     LDAA	0,SP		    ;    Load the value of the index for the loop
 					PULB
-                    LDAB	#$00            ;    Clear the B register in case it doesn't get cleared
+                    LDAB	#$00            ;    Clear the B register
                     INCA                    ;    A++
 					BRA     WHILE_1         ;}
 END_WHILE_1
+		   			LDD		0,SP            ;    D is the current velocity that it is being incremented
+                    ADDD	4,SP            ;    D = D + VDelta
+                    LDAA    #$00
+WHILE_2             CMPA    #$0A            ;While A != 10
+                    BEQ     END_WHILE_2     ;{
+                    PSHA                    ;    Throw A into stack (8 bits)
+                    LDD		1,SP            ;    D is the current velocity that it is being incremented
+                    STD	    2,X+            ;    Store for Left Velocity
+                    STD     2,Y+            ;    Store for Right Velocity
+                    LDAA	0,SP		    ;    Load the value of the index for the loop
+					PULB
+                    LDAB	#$00            ;    Clear the B register
+                    INCA                    ;    A++
+					BRA     WHILE_2         ;}
+					PULA
+END_WHILE_2
+		   			STD	    2,X+            ;
+                    STD     2,Y+
+                    LDAA    #$00
+WHILE_3             CMPA    #$09            ;While A != 10
+                    BEQ     END_WHILE_3     ;{
+                    PSHA                    ;    Throw A into stack (8 bits)
+                    LDD		1,SP            ;    D is the current velocity that it is being incremented
+                    SUBD	5,SP            ;    D = D + VDelta
+                    STD	    2,X+            ;    Store for Left Velocity
+                    STD     2,Y+            ;    Store for Right Velocity
+                    STD		1,SP            ;    Store the current value of D
+                    LDAA	0,SP		    ;    Load the value of the index for the loop
+                    PULB
+                    LDAB	#$00            ;    Clear the B register
+                    INCA                    ;    A++
+                    BRA     WHILE_3         ;}
+END_WHILE_3
+                    PULD
 END_PARSE_INTERVAL  RTS

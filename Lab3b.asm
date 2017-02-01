@@ -32,6 +32,9 @@ Time_String     	FCB     'PLEASE CHOOSE A TOTAL TIME PERIOD:',$0D,$0A,$00
 OP_STRING			FCB		'HIGH (1), MEDIUM (2), OR LOW (3)',$0D,$0A,$00
 VEL_STRING			FCB		'VELOCITY %u:             %X     ',$0D,$0A,$00
 NEW_LINE			FCB		' ',$0D,$0A,$00
+CALC_STRING			FCB		'CALC STRING FUNC',$0D,$0A,$00
+PARS_STRING			FCB		'PARSE STRING FUNC',$0D,$0A,$00
+
 
 
 ;******************************* End Symbols **********************************;
@@ -39,75 +42,76 @@ NEW_LINE			FCB		' ',$0D,$0A,$00
 ;********************************** Main **************************************;
 MAIN                ORG     $2200   	    ;Starting Address
 
-; GET_INPUT_1			LDD     #Velocity_String
-;                     LDX     printf
-;                     JSR     0,X
-;                     LDD     #OP_STRING
-;                     LDX     printf
-;                     JSR     0,X
-;                     LDX		GETCHAR
-;                     JSR		0,X
-;                     LDX		PUTCHAR
-;                     JSR		0,X
-;                     PSHB
-;                     LDD     #NEW_LINE
-;                     LDX     printf
-;                     JSR     0,X
-;                     PULB
-;                     CMPB	$31
-;                     BEQ		FIRST_OPTION_1
-;                     CMPB	$32
-;                     BEQ		SECOND_OPTION_1
-;                     CMPB	$33
-;                     BEQ		THIRD_OPTION_1
-;                     BRA		END_GET_INPUT_1
-; FIRST_OPTION_1		LDD		#HIGH
-;                     STD		VConstant
-;                     BRA		END_GET_INPUT_1
-; SECOND_OPTION_1		CMPB	$32
-;                     LDD		#MEDIUM
-;                     STD		VConstant
-;                     BRA		END_GET_INPUT_1
-; THIRD_OPTION_1		CMPB	$33
-;                     LDD		#LOW
-;                     STD		VConstant
-;                     BRA		END_GET_INPUT_1
-; END_GET_INPUT_1
-;
-; GET_INPUT_2			LDD     #Time_String
-;                     LDX     printf
-;                     JSR     0,X
-;                     LDD     #OP_STRING
-;                     LDX     printf
-;                     JSR     0,X
-;                     LDX		GETCHAR
-;                     JSR		0,X
-;                     LDX		PUTCHAR
-;                     JSR		0,X
-;                     PSHB
-;                     LDD     #NEW_LINE
-;                     LDX     printf
-;                     JSR     0,X
-;                     PULB
-;                     CMPB	$32
-;                     BEQ		FIRST_OPTION_2
-;                     CMPB	$32
-;                     BEQ		SECOND_OPTION_2
-;                     CMPB	$33
-;                     BEQ		THIRD_OPTION_2
-;                     BRA		END_GET_INPUT_2
-; FIRST_OPTION_2		LDD		#HIGH
-;                     STD		TTotal
-;                     BRA		END_GET_INPUT_2
-; SECOND_OPTION_2		CMPB	$32
-;                     LDD		#MEDIUM
-;                     STD		TTotal
-;                     BRA		END_GET_INPUT_2
-; THIRD_OPTION_2		CMPB	$33
-;                     LDD		#LOW
-;                     STD		TTotal
-;                     BRA		END_GET_INPUT_2
-; END_GET_INPUT_2
+GET_INPUT_1			LDD     #Velocity_String
+                    LDX     printf
+                    JSR     0,X
+                    LDD     #OP_STRING
+                    LDX     printf
+                    JSR     0,X
+                    LDX		GETCHAR
+                    JSR		0,X
+                    LDX		PUTCHAR
+                    JSR		0,X
+                    PSHB
+                    LDD     #NEW_LINE
+                    LDX     printf
+                    JSR     0,X
+                    PULB
+                    SWI
+                    CMPB	#$31
+                    BEQ		FIRST_OPTION_1
+                    CMPB	#$32
+                    BEQ		SECOND_OPTION_1
+                    CMPB	#$33
+                    BEQ		THIRD_OPTION_1
+                    BRA		END_GET_INPUT_1
+FIRST_OPTION_1		LDD		#HIGH
+                    STD		VConstant
+                    BRA		END_GET_INPUT_1
+SECOND_OPTION_1		CMPB	$32
+                    LDD		#MEDIUM
+                    STD		VConstant
+                    BRA		END_GET_INPUT_1
+THIRD_OPTION_1		CMPB	$33
+                    LDD		#LOW
+                    STD		VConstant
+                    BRA		END_GET_INPUT_1
+END_GET_INPUT_1
+
+GET_INPUT_2			LDD     #Time_String
+                    LDX     printf
+                    JSR     0,X
+                    LDD     #OP_STRING
+                    LDX     printf
+                    JSR     0,X
+                    LDX		GETCHAR
+                    JSR		0,X
+                    LDX		PUTCHAR
+                    JSR		0,X
+                    PSHB
+                    LDD     #NEW_LINE
+                    LDX     printf
+                    JSR     0,X
+                    PULB
+                    CMPB	$32
+                    BEQ		FIRST_OPTION_2
+                    CMPB	$32
+                    BEQ		SECOND_OPTION_2
+                    CMPB	$33
+                    BEQ		THIRD_OPTION_2
+                    BRA		END_GET_INPUT_2
+FIRST_OPTION_2		LDD		#HIGH
+                    STD		TTotal
+                    BRA		END_GET_INPUT_2
+SECOND_OPTION_2		CMPB	$32
+                    LDD		#MEDIUM
+                    STD		TTotal
+                    BRA		END_GET_INPUT_2
+THIRD_OPTION_2		CMPB	$33
+                    LDD		#LOW
+                    STD		TTotal
+                    BRA		END_GET_INPUT_2
+END_GET_INPUT_2
 
                     LDD     #VDelta         ;Pass the VDelta var by reference
                     PSHD
@@ -130,8 +134,6 @@ MAIN                ORG     $2200   	    ;Starting Address
 					PULD
 					SWI
 
-                    LDD     #$1000
-                    PSHD
                     LDD     #LeftVelocity
                     PSHD
                     LDD     #RightVelocity
@@ -198,6 +200,9 @@ END_DISP_PROFILE    RTS
 ;( 12) - VDelta         - Reference - 16 bits - Output
 ;******************************************************************************;
 CALC_INTERVAL
+                    LDD     #CALC_STRING
+                    LDX     printf
+                    JSR     0,X
 
                     LDD     2,SP            ;Load TTotal
                     LDX     #!5             ;
@@ -230,7 +235,9 @@ END_CALC_INTERVAL   RTS
 ;( 6 ) - LeftVelocity   - Reference - 16 bits - Output
 ;******************************************************************************;
 PARSE_INTERVAL
-
+                    LDD     #PARS_STRING
+                    LDX     printf
+                    JSR     0,X
                     LDX     6,SP            ;Left Velocity
                     LDY     4,SP            ;Right Velocity
                     LDD		#$0000
@@ -255,7 +262,7 @@ END_WHILE_1
 		   			LDD		0,SP            ;    D is the current velocity that it is being incremented
                     ADDD	4,SP            ;    D = D + VDelta
                     LDAA    #$00
-WHILE_2             CMPA    #$0A            ;While A != 10
+WHILE_2             CMPA    #$08            ;While A != 10
                     BEQ     END_WHILE_2     ;{
                     PSHA                    ;    Throw A into stack (8 bits)
                     LDD		1,SP            ;    D is the current velocity that it is being incremented
@@ -286,5 +293,9 @@ WHILE_3             CMPA    #$09            ;While A != 10
                     INCA                    ;    A++
                     BRA     WHILE_3         ;}
 END_WHILE_3
+                    LDD     #$0000
+                    STD	    2,X+            ;
+                    STD     2,Y+
+
                     PULD
 END_PARSE_INTERVAL  RTS

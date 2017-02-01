@@ -4,7 +4,6 @@ args:
   - "{FILE_ACTIVE}"
   - S
   - L
-  - & taskkill /IM CASM12Z.exe
 sh: true,
 # cwd: <current working directory for `cmd`>
 # env:

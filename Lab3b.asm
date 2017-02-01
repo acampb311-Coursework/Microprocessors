@@ -24,7 +24,7 @@ VConstant           EQU     $100A
 TTotal              EQU     $100C
 LOW					EQU		$0064
 HIGH				EQU		$2710
-MEDIUM				EQU		$02E8
+MEDIUM				EQU		$03E8
 RightVelocity       EQU     $2000
 LeftVelocity        EQU     $2100
 Velocity_String     FCB     'PLEASE CHOOSE A CONSTANT VELOCITY:',$0D,$0A,$00
@@ -84,6 +84,7 @@ GET_INPUT_2			LDD     #Time_String
                     LDD     #OP_STRING
                     LDX     printf
                     JSR     0,X
+
                     LDX		GETCHAR
                     JSR		0,X
                     LDX		PUTCHAR
@@ -93,21 +94,21 @@ GET_INPUT_2			LDD     #Time_String
                     LDX     printf
                     JSR     0,X
                     PULB
-                    CMPB	$32
+                    CMPB	#$31
                     BEQ		FIRST_OPTION_2
-                    CMPB	$32
+                    CMPB	#$32
                     BEQ		SECOND_OPTION_2
-                    CMPB	$33
+                    CMPB	#$33
                     BEQ		THIRD_OPTION_2
                     BRA		END_GET_INPUT_2
 FIRST_OPTION_2		LDD		#HIGH
                     STD		TTotal
                     BRA		END_GET_INPUT_2
-SECOND_OPTION_2		CMPB	$32
+SECOND_OPTION_2		CMPB	#$32
                     LDD		#MEDIUM
                     STD		TTotal
                     BRA		END_GET_INPUT_2
-THIRD_OPTION_2		CMPB	$33
+THIRD_OPTION_2		CMPB	#$33
                     LDD		#LOW
                     STD		TTotal
                     BRA		END_GET_INPUT_2

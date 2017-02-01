@@ -16,19 +16,34 @@ PORTJ               EQU     $0268
 DDRJ                EQU     $026A
 J_IOMASK            EQU     $00
 DelayTime           EQU     $FFFF
-AWK_STRING          FCB     'Button Pressed!:',$0D,$0A,$00,$0D,$0A,$00
+AWK_STRING          FCB     'Button Pressed!:',$0D,$0A,$00
 
 MAIN                ORG     $2200
                     LDAA    #J_IOMASK
                     STAA    DDRJ
 
-					CLRA
 WHILE_1             LDAA    PORTJ
 					CMPA    #$C3
                     BNE     WHILE_1
                     LDD     #AWK_STRING
                     LDX     printf
                     JSR     0,X
+                    LDX     #DelayTime
+                    JSR     DELAY
+                    LDX     #DelayTime
+                    JSR     DELAY
+                    LDX     #DelayTime
+                    JSR     DELAY
+                    LDX     #DelayTime
+                    JSR     DELAY
+                    LDX     #DelayTime
+                    JSR     DELAY
+                    LDX     #DelayTime
+                    JSR     DELAY
+                    LDX     #DelayTime
+                    JSR     DELAY
+                    LDX     #DelayTime
+                    JSR     DELAY
                     LDX     #DelayTime
                     JSR     DELAY
                     LDX     #DelayTime

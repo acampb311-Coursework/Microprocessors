@@ -1,13 +1,15 @@
 ;******************************************************************************;
 ;Lab3b.asm
 ;
-;Description:
+;Description: This program calculates the trapezoidal velocity profile intended
+;to be used with a mechanical robot. It recieves an input from the user in order
+;to calculate this profile. It then displays that profile
 ;
 ;Written By: Adam Campbell
 ;
 ;Date Written: 1/24/2017
 ;
-;Date Modified:
+;Date Modified: 2/2/2017 Added Comments
 ;
 ;******************************************************************************;
 
@@ -27,24 +29,27 @@ HIGH				EQU		$2710
 MEDIUM				EQU		$03E8
 RightVelocity       EQU     $2000
 LeftVelocity        EQU     $2100
+Title_String         FCB     '           MOTOR CONTROL SOFTWARE         ',$0D,$0A,$00
 Velocity_String     FCB     'PLEASE CHOOSE A CONSTANT VELOCITY:',$0D,$0A,$00
 Time_String     	FCB     'PLEASE CHOOSE A TOTAL TIME PERIOD:',$0D,$0A,$00
 OP_STRING			FCB		'HIGH (1), MEDIUM (2), OR LOW (3)',$0D,$0A,$00
 VEL_STRING			FCB		'VELOCITY %u:             %X     ',$0D,$0A,$00
+Ta_String           FCB     'TA:         %X',$0D,$0A,$00
+TC_String           FCB     'TC:         %X',$0D,$0A,$00
+TTotal_String       FCB     'TTOTAL:     %X',$0D,$0A,$00
+DELTAV_STRING       FCB     'DELTAV:     %X',$0D,$0A,$00
 NEW_LINE			FCB		' ',$0D,$0A,$00
-CALC_STRING			FCB		'CALC STRING FUNC',$0D,$0A,$00
-PARS_STRING			FCB		'PARSE STRING FUNC',$0D,$0A,$00
-
-
-
 ;******************************* End Symbols **********************************;
 
 ;********************************** Main **************************************;
 MAIN                ORG     $2200   	    ;Starting Address
 
-GET_INPUT_1			LDD     #Velocity_String
+GET_INPUT_1			LDD     #Title_String
                     LDX     printf
                     JSR     0,X
+                    LDD     #Velocity_String
+                            LDX     printf
+                            JSR     0,X
                     LDD     #OP_STRING
                     LDX     printf
                     JSR     0,X
@@ -57,7 +62,6 @@ GET_INPUT_1			LDD     #Velocity_String
                     LDX     printf
                     JSR     0,X
                     PULB
-                    SWI
                     CMPB	#$31
                     BEQ		FIRST_OPTION_1
                     CMPB	#$32
@@ -84,7 +88,6 @@ GET_INPUT_2			LDD     #Time_String
                     LDD     #OP_STRING
                     LDX     printf
                     JSR     0,X
-
                     LDX		GETCHAR
                     JSR		0,X
                     LDX		PUTCHAR
@@ -133,7 +136,6 @@ END_GET_INPUT_2
 					PULD
 					PULD
 					PULD
-					SWI
 
                     LDD     #LeftVelocity
                     PSHD
@@ -148,20 +150,41 @@ END_GET_INPUT_2
                     PULD
 					LDD		#RightVelocity
                     PSHD
-					SWI
                     JSR	   	DISP_PROFILE
+                    LDD     Ta
+                    PSHD
+                    LDD     #Ta_String
+                    LDX     printf
+                    JSR     0,X
 
+                    LDD     Tc
+                    PSHD
+                    LDD     #TC_String
+                    LDX     printf
+                    JSR     0,X
+
+                    LDD     TTotalRef
+                    PSHD
+                    LDD     #TTotal_String
+                    LDX     printf
+                    JSR     0,X
+
+                    LDD     VDelta
+                    PSHD
+                    LDD     #DELTAV_STRING
+                    LDX     printf
+                    JSR     0,X
 					SWI
 END_MAIN            END
 ;********************************* End Main ***********************************;
 
 ;******************************************************************************;
-;DISP_PROFILE -
+;DISP_PROFILE - Displays the velocity profile
 ;( 0 ) - Return Address    - Value     - 16 bits - Input
 ;( 2 ) - Profile Address   - Value     - 16 bits - Input
 ;******************************************************************************;
-
-DISP_PROFILE        LDY     2,SP
+DISP_PROFILE
+                    LDY     2,SP
                     LDAA    #$01
 WHILE_4             CMPA    #$1F
                     BEQ     END_WHILE_4
@@ -177,7 +200,7 @@ WHILE_4             CMPA    #$1F
                     JSR     0,X
                     PULD
                     PULD
-                    PULY					;Took 2 hours to realize that the y register is being used in the print register... fml
+                    PULY
                     INY
                     INY
                     PULA
@@ -201,10 +224,6 @@ END_DISP_PROFILE    RTS
 ;( 12) - VDelta         - Reference - 16 bits - Output
 ;******************************************************************************;
 CALC_INTERVAL
-                    LDD     #CALC_STRING
-                    LDX     printf
-                    JSR     0,X
-
                     LDD     2,SP            ;Load TTotal
                     LDX     #!5             ;
                     IDIV                    ;X = D / X;
@@ -236,9 +255,6 @@ END_CALC_INTERVAL   RTS
 ;( 6 ) - LeftVelocity   - Reference - 16 bits - Output
 ;******************************************************************************;
 PARSE_INTERVAL
-                    LDD     #PARS_STRING
-                    LDX     printf
-                    JSR     0,X
                     LDX     6,SP            ;Left Velocity
                     LDY     4,SP            ;Right Velocity
                     LDD		#$0000

@@ -22,10 +22,10 @@ Rename-Item tempfile.txt -NewName $file
 [void] [System.Reflection.Assembly]::LoadWithPartialName("'Microsoft.VisualBasic")
 [Microsoft.VisualBasic.Interaction]::AppActivate("Atom")
 [void] [System.Reflection.Assembly]::LoadWithPartialName("'System.Windows.Forms")
-#[System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
-#[System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
-#
-#
+[System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
+[System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
+
+
 #Add-Content "LOAD" -Value (Get-Content $s19File)
 $errorFile = [io.path]::GetFileNameWithoutExtension($filename) + ".ERR"
 Get-Content $errorFile

@@ -15,7 +15,7 @@ sh: true,
 #   VARIABLE1: "VALUE1"
 #   VARIABLE2: "VALUE2"
 errorMatch:
-  - (?<file>([^\\]+)\.asm)\((?<line>(\d+))
+  - (?<file>([^\\]+)\.asm)\((?<line>(\d+))\)\:\ (?<message>.*?.*)
   # - (?<file>[\\\/].*\.[\w:]+):(?<line>\((\d+)\)):(?<message> :(.*(:(.*))))
 # warningMatch:
 #   - ^regexp1$

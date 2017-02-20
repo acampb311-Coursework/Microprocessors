@@ -22,7 +22,7 @@ AWK_STRING          FCB     'Button Pressed!:',$0D,$0A,$00
 MAIN                ORG     $2200
                     LDAA    #J_IOMASK
                     STAA    DDRJ
-
+                    SWI
 WHILE_1             LDAA    PORTJ
 					CMPA    #$C3             ;PortJ0 -> 1100001[1] so C3 is high
                     BNE     WHILE_1

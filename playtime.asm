@@ -1,24 +1,21 @@
 ;******************************************************************************;
 ;Lab6.asm
 ;
-;Description:This program dynamically displays content to an attached LCD.
-;This content is displayed if an attached button is pressed within 2 seconds of
-;the start of the program.
+;Description:
 ;
 ;Written By: Adam Campbell
 ;
-;Date Written: 2/10/2017
+;Date Written: 2/6/2017
 ;
-;Date Modified: 2/14/2017 - Added comments
+;Date Modified:
 ;
 ;******************************************************************************;
-#HCS12
-
+                                            ;Data for the program
+                                            ;TODO
 INIT_STACK          EQU     $3C00
 PROGRAM_START       EQU     $2200
 PROGRAM_DATA        EQU     $1900
-                                            ;Data for the program
-                                            ;
+
                     ORG     PROGRAM_DATA
 PORTJ               EQU     $0268
 DDRJ                EQU     $026A
@@ -44,10 +41,8 @@ IRQ_PIN             EQU     $001E
 IRQ_ENABLE_MASK     EQU     %11000000
 IRQ_EDGE_MASK       EQU     %10000000
 AWK_STRING          FCB     'Button Pressed!:',$0D,$0A,$00
-INTERRUPT_FLAG      FCB     $00
-FIRST_HALF          FCB     $0000
-SECOND_HALF         FCB     $0000
-Threshold           EQU     $55 	       ;Wall Closeness
+
+
 
 ;******************************************************************************;
 ;MAIN - Central Routine for program.
@@ -55,45 +50,7 @@ Threshold           EQU     $55 	       ;Wall Closeness
 MAIN                ORG     PROGRAM_START  ;Starting address for the program
                     SEI
                     LDS     #INIT_STACK
-                    LDD     #INTERRUPT_SUBR
-                    STD     $3E72
-                    PSHD
-                    LDD     #!57
-                    LDX     $EEA4
-                    JSR     0,X
 
-                    LDAA    #IRQ_ENABLE_MASK
-                    STAA    IRQ_PIN
-                    LDAA    $3000   	    ;Load the sensor data into register A
-                    STAA    $1800   	    ;Store the sensor data into address $1800
-                    LDAA    $3001   	    ;Load the sensor data into register A
-                    STAA    $1801   	    ;Store the sensor data into address $1801
-                    LDAA    $3002   	    ;Load the sensor data into register A
-                    STAA    $1802   	    ;Store the sensor data into address $1802
-                    LDAA 	$1800		    ;A = sensor data
-                    CMPA    #Threshold	    ;Compare sensor data to threshold value
-IF1	                BLS		ELSE1		    ;If (A > Threshold)
-                    LDAA	#$00		    ;   A = 0
-                    LDAB    #$01            ;   B = 1
-WHILE1              CMPA    #$0F            ;   While (A != 15)
-                    BEQ     END_WHILE1      ;
-                    ABA                     ;       A = B + A
-                    INCB                    ;       B++
-                    BRA     WHILE1          ;   PC = While1
-END_WHILE1          STAA	$1800		    ;$1800 = A
-ELSE1               LDAA	$1801		    ;A = sensor data
-                    CMPA	#Threshold	    ;Compare sensor data to threshold value
-IF2                 BLS		ELSE2		    ;If (A > Threshold)
-                    LDAA	#$00		    ;   A = 0
-                    STAA	$1801		    ;   $1801 = A
-ELSE2               LDAA	$1802		    ;A = sensor data
-                    CMPA    #Threshold	    ;Compare sensor data to threshold value
-IF3	                BLS		ELSE3		    ;If (A > Threshold)
-                    LDAA	$1802		    ;   A = (Contents Of)$1802
-                    LDAB	#$10		    ;   B = 10
-                    SBA					    ;   A = A - B
-                    STAA	$1802 		    ;$1802 = A
-ELSE3	            					    ;
                                             ;
                                             ;Initialize the ports
                                             ;
@@ -111,14 +68,24 @@ ELSE3	            					    ;
                     JSR     INIT_PORT       ;
                     LEAS    3,SP            ;Clean up the stack
                                             ;
-                    LDAA    #%00001111      ;Blinkies!!!!
+
+
+
+                    ; LDAA    #%00001111      ;Blinkies!!!!
+                    ; PSHA                    ;
+                    ; LDD     #PORTH          ;
+                    ; PSHD                    ;
+                    ; JSR     LCD_COMMAND     ;
+                    ; LEAS    3,SP            ;Clean up the stack
+
+                    LDAA    #LCD_FUNC_ON_CMD;two lines
                     PSHA                    ;
                     LDD     #PORTH          ;
                     PSHD                    ;
                     JSR     LCD_COMMAND     ;
                     LEAS    3,SP            ;Clean up the stack
 
-                    LDAA    #LCD_FUNC_ON_CMD;two lines
+                    LDAA    #%00001111      ;clear the display
                     PSHA                    ;
                     LDD     #PORTH          ;
                     PSHD                    ;
@@ -132,29 +99,135 @@ ELSE3	            					    ;
                     JSR     LCD_COMMAND     ;
                     LEAS    3,SP            ;Clean up the stack
 
-                    ; LDAA    #%11000000      ;Second line
-                    ; PSHA                    ;
-                    ; LDD     #PORTH          ;
-                    ; PSHD                    ;
-                    ; JSR     LCD_COMMAND     ;
-                    ; LEAS    3,SP            ;Clean up the stack
+                    LDAA    #%01000000      ;Send the CGRAM Init command
+                    PSHA                    ;
+                    LDD     #PORTH          ;
+                    PSHD                    ;
+                    JSR     LCD_COMMAND     ;
+                    LEAS    3,SP            ;Clean up the stack
 
-                    LDAA    #$00
-                    STAA    INTERRUPT_FLAG
-                    CLI
-                    LDY     #!122  ;Delay the program 2 seconds
-                    PSHY
-                    JSR     DELAY_X
-                    SEI
-                    LDAA    INTERRUPT_FLAG
+                    LDAA    #$0E            ;
+                    STAA    $1500
+                    PSHA                    ;
+                    LDD     #PORTH          ;
+                    PSHD                    ;
+                    JSR     LCD_DATA        ;
+                    LEAS    3,SP            ;Clean up the stack
 
-IF_INTERRUPT        CMPA    #$01
-                    BNE     END_IF_INTERRUPT
-                    JSR     PRINT_MEMORY
-END_IF_INTERRUPT
+                    LDAA    #$11            ;
+                    STAA    $1501
+                    PSHA                    ;
+                    LDD     #PORTH          ;
+                    PSHD                    ;
+                    JSR     LCD_DATA     ;
+                    LEAS    3,SP            ;Clean up the stack
+
+                    LDAA    #$0E            ;
+                    STAA    $1502
+                    PSHA                    ;
+                    LDD     #PORTH          ;
+                    PSHD                    ;
+                    JSR     LCD_DATA     ;
+                    LEAS    3,SP            ;Clean up the stack
+
+                    LDAA    #$04            ;
+                    STAA    $1503
+                    PSHA                    ;
+                    LDD     #PORTH          ;
+                    PSHD                    ;
+                    JSR     LCD_DATA     ;
+                    LEAS    3,SP            ;Clean up the stack
+
+                    LDAA    #$1F            ;
+                    STAA    $1504
+                    PSHA                    ;
+                    LDD     #PORTH          ;
+                    PSHD                    ;
+                    JSR     LCD_DATA     ;
+                    LEAS    3,SP            ;Clean up the stack
+
+                    LDAA    #$04            ;
+                    STAA    $1505
+                    PSHA                    ;
+                    LDD     #PORTH          ;
+                    PSHD                    ;
+                    JSR     LCD_DATA     ;
+                    LEAS    3,SP            ;Clean up the stack
+
+                    LDAA    #$0A            ;
+                    STAA    $1506
+                    PSHA                    ;
+                    LDD     #PORTH          ;
+                    PSHD                    ;
+                    JSR     LCD_DATA     ;
+                    LEAS    3,SP            ;Clean up the stack
+
+                    LDAA    #$11            ;
+                    STAA    $1507
+                    PSHA                    ;
+                    LDD     #PORTH          ;
+                    PSHD                    ;
+                    JSR     LCD_DATA     ;
+                    LEAS    3,SP            ;Clean up the stack
+
+                    LDAA    #LCD_DISP_CLR_CMD;clear the display
+                    PSHA                    ;
+                    LDD     #PORTH          ;
+                    PSHD                    ;
+                    JSR     LCD_COMMAND     ;
+                    LEAS    3,SP            ;Clean up the stack
+
+                    LDAA    #%11000000      ;
+                    PSHA                    ;
+                    LDD     #PORTH          ;
+                    PSHD                    ;
+                    JSR     LCD_COMMAND     ;
+                    LEAS    3,SP            ;Clean up the stack
+
+                    LDAA    #%00010100      ;
+                    PSHA                    ;
+                    LDD     #PORTH          ;
+                    PSHD                    ;
+                    JSR     LCD_COMMAND     ;
+                    LEAS    3,SP            ;Clean up the stack
+
+                    LDAA    #$00            ;
+                    PSHA                    ;
+                    LDD     #PORTH          ;
+                    PSHD                    ;
+                    JSR     LCD_DATA        ;
+                    LEAS    3,SP            ;Clean up the stack
+
+
+;
+;Check off by one because of zero based 1500
+;
+
+; FOR_IDX             LDAA    #$01            ;For idx = 1:32 (each box)
+;                     PSHA                    ;IDX, 2,SP
+;                     CMPA    #$20
+;                     BEQ     END_FOR_IDX
+; FOR_JDX             LDAA    #$01            ;For jdx = 1:8(times idx,plus $1500)
+;                     PSHA                    ;JDX, 0,SP
+;                     LDAB    2,SP
+;                     MUL
+;                     ABA     #$1500          ;A now has the address where we want to work
+;
+; END_FOR_JDX
+;                     PULA
+;                     JMP     FOR_IDX
+;
+; END_FOR_IDX
+
+
+
+; CLC
+; LDAA    ROW_1
+; ASRA
+; ANDA    #%01111111
+
                     SWI
 END_MAIN            END
-
 
 BUSY_WAIT           LDAA    #%00000000      ;Port H (LCD) clear all to Read
                     STAA    DDRH            ;.
@@ -182,190 +255,14 @@ BUSY_READ           LDAA    PORTJ           ;Set Port J1 (Enable of LCD)
                     STAA    DDRH            ;.
                     RTS
 
-
-;******************************************************************************;
-;PRINT_MEMORY - Routine for displaying the contents of a memory location to
-;an attached LCD
-;******************************************************************************;
-PRINT_MEMORY        LDAA    #$4C            ;'L'
-                    PSHA                    ;
-                    LDD     #PORTH          ;
-                    PSHD                    ;
-                    JSR     LCD_DATA        ;
-                    LEAS    3,SP            ;Clean up the stack
-
-                    LDAA    #$3A            ;':'
-                    PSHA                    ;
-                    LDD     #PORTH          ;
-                    PSHD                    ;
-                    JSR     LCD_DATA        ;
-                    LEAS    3,SP            ;Clean up the stack
-
-                    LDD     #FIRST_HALF
-                    PSHD
-                    LDD     #SECOND_HALF
-                    PSHD
-                    LDAB    $1800
-                    CLRA
-                    PSHD
-                    JSR     MEM_TO_ASCII
-                    LEAS    6,SP            ;Clean up the stack
-
-                    LDD     FIRST_HALF      ;
-                    PSHB                    ;
-                    LDD     #PORTH          ;
-                    PSHD                    ;
-                    JSR     LCD_DATA        ;
-                    LEAS    3,SP            ;Clean up the stack
-
-                    LDD     SECOND_HALF     ;
-                    PSHB
-                    LDD     #PORTH          ;
-                    PSHD                    ;
-                    JSR     LCD_DATA        ;
-                    LEAS    3,SP            ;Clean up the stack
-
-                    LDAA    #$20            ;' '
-                    PSHA                    ;
-                    LDD     #PORTH          ;
-                    PSHD                    ;
-                    JSR     LCD_DATA        ;
-                    LEAS    3,SP            ;Clean up the stack
-
-                    LDAA    #$43            ;'C'
-                    PSHA                    ;
-                    LDD     #PORTH          ;
-                    PSHD                    ;
-                    JSR     LCD_DATA        ;
-                    LEAS    3,SP            ;Clean up the stack
-
-                    LDAA    #$3A            ;':'
-                    PSHA                    ;
-                    LDD     #PORTH          ;
-                    PSHD                    ;
-                    JSR     LCD_DATA        ;
-                    LEAS    3,SP            ;Clean up the stack
-
-                    LDD     #FIRST_HALF
-                    PSHD
-                    LDD     #SECOND_HALF
-                    PSHD
-                    LDAB    $1801
-                    CLRA
-                    PSHD
-                    JSR     MEM_TO_ASCII
-                    LEAS    6,SP            ;Clean up the stack
-
-                    LDD     FIRST_HALF      ;
-                    PSHB                    ;
-                    LDD     #PORTH          ;
-                    PSHD                    ;
-                    JSR     LCD_DATA        ;
-                    LEAS    3,SP            ;Clean up the stack
-
-                    LDD     SECOND_HALF     ;
-                    PSHB
-                    LDD     #PORTH          ;
-                    PSHD                    ;
-                    JSR     LCD_DATA        ;
-                    LEAS    3,SP            ;Clean up the stack
-
-                    LDAA    #$20            ;' '
-                    PSHA                    ;
-                    LDD     #PORTH          ;
-                    PSHD                    ;
-                    JSR     LCD_DATA        ;
-                    LEAS    3,SP            ;Clean up the stack
-
-                    LDAA    #$52            ;'R'
-                    PSHA                    ;
-                    LDD     #PORTH          ;
-                    PSHD                    ;
-                    JSR     LCD_DATA        ;
-                    LEAS    3,SP            ;Clean up the stack
-
-                    LDAA    #$3A            ;':'
-                    PSHA                    ;
-                    LDD     #PORTH          ;
-                    PSHD                    ;
-                    JSR     LCD_DATA        ;
-                    LEAS    3,SP            ;Clean up the stack
-
-                    LDD     #FIRST_HALF
-                    PSHD
-                    LDD     #SECOND_HALF
-                    PSHD
-                    LDAB    $1802
-                    CLRA
-                    PSHD
-                    JSR     MEM_TO_ASCII
-                    LEAS    6,SP            ;Clean up the stack
-
-                    LDD     FIRST_HALF      ;
-                    PSHB                    ;
-                    LDD     #PORTH          ;
-                    PSHD                    ;
-                    JSR     LCD_DATA        ;
-                    LEAS    3,SP            ;Clean up the stack
-
-                    LDD     SECOND_HALF     ;
-                    PSHB
-                    LDD     #PORTH          ;
-                    PSHD                    ;
-                    JSR     LCD_DATA        ;
-                    LEAS    3,SP            ;Clean up the stack
-
-END_PRINT_MEMORY    RTS
-
-;******************************************************************************;
-;MEM_TO_ASCII - Sends a character to an I/O port. It pauses for 50 microseconds
-;before sending in order for the commands to be sent successfully. Improving
-;this function requires polling the R/W port.
-;( 0 ) - Return Address             - Value         - 16 bits - Input
-;( 2 ) - Memory Address             - Value         - 16 bits - Input
-;( 4 ) - Second Half Address        - Reference     - 16 bits - Input
-;( 6 ) - First Half Address         - Reference     - 16 bits - Input
-;******************************************************************************;
-MEM_TO_ASCII        LDD     2,SP
-                    LDX     #$10
-                    IDIV
-IF_IS_NUM           CPD     #$0009
-                    BHI     ELSE_IS_NUM
-                    ADDD    #$0030
-                    LDY     4,SP
-                    STD     0,Y
-                    JMP     END_IS_NUM
-ELSE_IS_NUM         ADDD    #$0037
-                    LDY     4,SP
-                    STD     0,Y
-END_IS_NUM
-                    PSHX
-                    PULD
-IF_IS_NUM_2         CPD     #$0009
-                    BHI     ELSE_IS_NUM_2
-                    ADDD    #$0030
-                    LDY     6,SP
-                    STD     0,Y
-                    JMP     END_IS_NUM_2
-ELSE_IS_NUM_2       ADDD    #$0037
-                    LDY     6,SP
-                    STD     0,Y
-END_IS_NUM_2
-
-END_MEM_TO_ASCII    RTS
-
-
-
 ;******************************************************************************;
 ;PULSE_E - Pulses the 1st pin of the J port.
 ;******************************************************************************;
 PULSE_E             LDAB    PORTJ
-                    ADDB    #%00000010
+                    ORAB    #%00000010
                     STAB    PORTJ
-                    ; LDX     #FIFTY_U_DELAY  ;Delay the program 50 microseconds
-                    ; JSR     DELAY
-                    LDAB    PORTJ
-                    SUBB    #%00000010
+                    ; LDAB    PORTJ
+                    ANDB    #%11111101
                     STAB    PORTJ
 END_PULSE_E         RTS
 
@@ -401,6 +298,7 @@ LCD_COMMAND         JSR     BUSY_WAIT
                     LDAB    #%00000000
                     STAB    PORTJ
                     JSR     PULSE_E
+                    ; LDAB    #%00000000
 END_LCD_COMMAND     RTS
 
 ;******************************************************************************;
@@ -435,19 +333,10 @@ DELAY               DEX
 ;( 2 ) - Delay Iterations  - Value     - 16 bits - Input
 ;******************************************************************************;
 DELAY_X             LDX     #$FFFF
+                    ; LDY     2,SP
 INNER_DELAY_X       DEX
 					BNE     INNER_DELAY_X
                     DEY
+                    ; STY     2,SP
                     BNE     DELAY_X
                     RTS
-
-INTERRUPT_SUBR      SEI
-                    LDY     #!75
-                    JSR     DELAY_X
-                    LDD     #AWK_STRING
-                    LDX     PRINTF
-                    JSR     0,X
-                    LDAA    #$01
-                    STAA    INTERRUPT_FLAG
-                    CLI
-END_INTERRUPT_SUBR  RTI

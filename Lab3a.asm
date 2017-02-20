@@ -1,13 +1,15 @@
 ;******************************************************************************;
-;Lab3b.asm
+;Lab3a.asm
 ;
-;Description:
+;Description: This program calculates the trapezoidal velocity profile intended
+;to be used with a mechanical robot. It expects to find a total time and a
+;final velocity at predetermined locations in memory.
 ;
 ;Written By: Adam Campbell
 ;
 ;Date Written: 1/24/2017
 ;
-;Date Modified:
+;Date Modified: 2/2/2017 More Comments
 ;
 ;******************************************************************************;
 
@@ -24,7 +26,6 @@ LeftVelocity        EQU     $2100
 
 ;********************************** Main **************************************;
 MAIN                ORG     $2200   	    ;Starting Address
-                    ;LDS		#$3C00          ;Set the SP
                     LDD     #VDelta         ;Pass the VDelta var by reference
                     PSHD
                     LDD     #TTotalRef      ;Pass the TTotalRef var by reference
@@ -37,15 +38,13 @@ MAIN                ORG     $2200   	    ;Starting Address
                     PSHD                    ;
                     LDD	    TTotal          ;Pass the TTotal var by value
                     PSHD                    ;
-                    JSR     CALC_INTERVAL   ;
+                    JSR     CALC_INTERVAL   ;Jump to the subroutine
+					PULD                    ;remove the parameters from the stack
 					PULD
 					PULD
 					PULD
 					PULD
 					PULD
-					PULD
-					LDD     #$1000
-                    PSHD
                     LDD     #LeftVelocity
                     PSHD
                     LDD     #RightVelocity
@@ -53,6 +52,11 @@ MAIN                ORG     $2200   	    ;Starting Address
                     LDD     VDelta
                     PSHD
                     JSR     PARSE_INTERVAL
+                    PULD
+                    PULD
+                    PULD
+                    PULD
+                    SWI
 END_MAIN            END
 ;********************************* End Main ***********************************;
 
@@ -98,14 +102,15 @@ END_CALC_INTERVAL   RTS
 ;( 4 ) - RightVelocity  - Reference - 16 bits - Output
 ;( 6 ) - LeftVelocity   - Reference - 16 bits - Output
 ;******************************************************************************;
-PARSE_INTERVAL      LDX     6,SP            ;Left Velocity
+PARSE_INTERVAL
+                    LDX     6,SP            ;Left Velocity
                     LDY     4,SP            ;Right Velocity
                     LDD		#$0000
 					STD	    2,X+
                     STD     2,Y+
                     PSHD
                     LDAA    #$00
-WHILE_1             CMPA    #$09            ;While A != 9
+WHILE_1             CMPA    #$0A            ;While A != 9
                     BEQ     END_WHILE_1     ;{
                     PSHA                    ;    Throw A into stack (8 bits)
                     LDD		1,SP            ;    D is the current velocity that it is being incremented
@@ -122,7 +127,7 @@ END_WHILE_1
 		   			LDD		0,SP            ;    D is the current velocity that it is being incremented
                     ADDD	4,SP            ;    D = D + VDelta
                     LDAA    #$00
-WHILE_2             CMPA    #$0A            ;While A != 10
+WHILE_2             CMPA    #$08            ;While A != 8
                     BEQ     END_WHILE_2     ;{
                     PSHA                    ;    Throw A into stack (8 bits)
                     LDD		1,SP            ;    D is the current velocity that it is being incremented
@@ -135,6 +140,7 @@ WHILE_2             CMPA    #$0A            ;While A != 10
 					BRA     WHILE_2         ;}
 					PULA
 END_WHILE_2
+                    LDD     0,SP
 		   			STD	    2,X+            ;
                     STD     2,Y+
                     LDAA    #$00
@@ -152,5 +158,9 @@ WHILE_3             CMPA    #$09            ;While A != 10
                     INCA                    ;    A++
                     BRA     WHILE_3         ;}
 END_WHILE_3
+                    LDD     #$0000
+                    STD	    2,X+            ;
+                    STD     2,Y+
+
                     PULD
 END_PARSE_INTERVAL  RTS

@@ -1,7 +1,7 @@
 ;******************************************************************************;
 ;Lab7.asm
 ;
-;Description:This program will eventually drive some motors.
+;Description:Monte Cox can suck my cock
 ;
 ;Written By: Adam Campbell
 ;
@@ -22,13 +22,12 @@ PROGRAM_DATA        EQU     $1900
 PRINTF              EQU     $EE88
 info                FCB     'Value:%X',$0D,$0A,$00
 
-TIOS                EQU     $0040
-TIOS_M              EQU     %10001100
+TIOS                EQU     $0040           ;PORT T, used for outputting sig
+TIOS_M              EQU     %10001100       ;7   6   5   4   3   2   1   0
+                                            ;PT7 PT6 PT5 PT4 PT3 PT2 PT1 PT0
+                                            ;OC7 OFF OFF OFF OUT OUT IN  IN
 TSCR1               EQU     $0046           ;Timer System Control Register
-TSCR1_MASK          EQU     %10000000       ;TEN bit (Timer enable)
-
-TCTL1               EQU     $0048           ;Timer Control Register 2 Pg. 290
-TCTL1_MASK          EQU     %00000000       ;OM* 1, OL* 0 == output line -> 0
+TSCR1_M             EQU     %10000000       ;TEN bit (Timer enable)
 
 TCTL2               EQU     $0049           ;Timer Control Register 2 Pg. 290
                                             ;"Set the logic states on the output
@@ -37,8 +36,7 @@ TCTL2               EQU     $0049           ;Timer Control Register 2 Pg. 290
                                             ;TCTL2
                                             ;7   6   5   4   3   2   1   0
                                             ;OM3 OL3 OM2 OL2 OM1 OL1 OM0 OL0
-TCTL2_MASK          EQU     %10100000       ;OM* 1, OL* 0 == output line -> 0
-; TCTL2_MASK          EQU     %11110000       ;OM* 1, OL* 1 == output line -> 1
+TCTL2_M             EQU     %10100000       ;OM* 1, OL* 0 == output line -> 0
 
                                             ;Configure the OC7 system to set high
                                             ;(turn on) the logic levels on pins
@@ -49,10 +47,15 @@ TCTL2_MASK          EQU     %10100000       ;OM* 1, OL* 0 == output line -> 0
                                             ;7   6   5   4   3   2   1   0
                                             ;T7  T6  T5  T4  T3  T2  T1  T0
 OC7M                EQU     $0042
-OC7M_MASK           EQU     %00001100
+OC7M_M              EQU     %00001100
 OC7D                EQU     $0043
-OC7D_MASK           EQU     %00001100
+OC7D_M              EQU     %00001100
 TC2H                EQU     $0044
+                                            ;Used for setting the operating
+                                            ;Frequency for the microprocessor
+                                            ;The equation for setting this up is
+                                            ;2*OSCLK*(SYNR + 1)/(REFDV + 1)
+                                            ;No idea if this actually works
 SYNR                EQU     $0034
 SYNR_M              EQU     !24
 REFDV               EQU     $0035
@@ -70,11 +73,10 @@ MAIN                ORG     PROGRAM_START   ;Starting address for the program
                     JSR     INIT_CLK_25
 
                     MOVB    #TIOS_M,TIOS
-                    MOVB    #TSCR1_MASK,TSCR1   ;Turn on the Timer System
-                    MOVB    #TCTL2_MASK,TCTL2   ;Turn the signal off on successful comparison
-                    MOVB    #OC7M_MASK,OC7M     ;Configure OC7 system
-                    MOVB    #OC7D_MASK,OC7D     ;Configure OC7 system
-                    MOVB    #TCTL1_MASK,TCTL1
+                    MOVB    #TSCR1_M,TSCR1  ;Turn on the Timer System
+                    MOVB    #TCTL2_M,TCTL2  ;Turn the signal off
+                    MOVB    #OC7M_M,OC7M    ;Configure OC7 system
+                    MOVB    #OC7D_M,OC7D    ;Configure OC7 system
                     LDD     #$8000
                     STD     $0054
 
@@ -92,10 +94,10 @@ BOB
 
                     BRA     BOB
 
-                    END
+END_MAIN            END
 
-INIT_CLK_25
-                    MOVB    #SYNR_M,SYNR
+
+INIT_CLK_25         MOVB    #SYNR_M,SYNR
                     MOVB    #REFDV_M,REFDV
                     MOVB    #PLLSEL_M,PLLSEL
 END_INIT_CLK_25     RTS

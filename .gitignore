@@ -17,6 +17,7 @@ $RECYCLE.BIN/
 *.ERR
 *.lst
 *.s19
+*.exe
 
 # Windows shortcuts
 *.lnk

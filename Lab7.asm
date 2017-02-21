@@ -1,7 +1,7 @@
 ;******************************************************************************;
 ;Lab7.asm
 ;
-;Description:Monte Cox can suck my cock
+;Description:gg
 ;
 ;Written By: Adam Campbell
 ;
@@ -51,17 +51,23 @@ OC7M_M              EQU     %00001100
 OC7D                EQU     $0043
 OC7D_M              EQU     %00001100
 TC2H                EQU     $0044
+
+; TCTL3               EQU     $004A           ;EDG*7->EDG*4
+; TCTL3_M             EQU     %
+; TCTL4               EQU     $004B           ;EDG*3->EDG*0
+; TCTL3_M             EQU     %000000
+
                                             ;Used for setting the operating
                                             ;Frequency for the microprocessor
                                             ;The equation for setting this up is
                                             ;2*OSCLK*(SYNR + 1)/(REFDV + 1)
                                             ;No idea if this actually works
-SYNR                EQU     $0034
-SYNR_M              EQU     !24
-REFDV               EQU     $0035
-REFDV_M             EQU     !31
-PLLSEL              EQU     $0039
-PLLSEL_M            EQU     %10000000
+; SYNR                EQU     $0034
+; SYNR_M              EQU     !0
+; REFDV               EQU     $0035
+; REFDV_M             EQU     !3
+; PLLSEL              EQU     $0039
+; PLLSEL_M            EQU     %10000000
 
 
 
@@ -70,11 +76,11 @@ PLLSEL_M            EQU     %10000000
 ;******************************************************************************;
 MAIN                ORG     PROGRAM_START   ;Starting address for the program
                     LDS     #INIT_STACK
-                    JSR     INIT_CLK_25
+                    ; JSR     INIT_CLK_25
 
                     MOVB    #TIOS_M,TIOS
                     MOVB    #TSCR1_M,TSCR1  ;Turn on the Timer System
-                    MOVB    #TCTL2_M,TCTL2  ;Turn the signal off
+                    MOVB    #TCTL2_M,TCTL2  ;Configure reg to turn signals off
                     MOVB    #OC7M_M,OC7M    ;Configure OC7 system
                     MOVB    #OC7D_M,OC7D    ;Configure OC7 system
                     LDD     #$8000
@@ -84,20 +90,20 @@ MAIN                ORG     PROGRAM_START   ;Starting address for the program
                     STD     $0056
 
                     LDD     #$FFFF
-                    STD     $005E
+                    STD     $005E             ;turns on (tc7)
 BOB
-                    LDD     TC2H
-                    PSHD
-                    LDD     #info
-                    LDX     printf
-                    JSR     0,X
-
+                    ; LDD     TC2H
+                    ; PSHD
+                    ; LDD     #info
+                    ; LDX     printf
+                    ; JSR     0,X
                     BRA     BOB
-
 END_MAIN            END
 
 
-INIT_CLK_25         MOVB    #SYNR_M,SYNR
-                    MOVB    #REFDV_M,REFDV
+INIT_CLK_25         ;MOVB    #%00000000,PLLSEL
+                    ;MOVB    #SYNR_M,SYNR
+                    ;MOVB    #REFDV_M,REFDV
+                    ;SWI
                     MOVB    #PLLSEL_M,PLLSEL
 END_INIT_CLK_25     RTS

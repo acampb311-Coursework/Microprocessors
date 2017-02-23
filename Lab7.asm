@@ -21,9 +21,12 @@ PROGRAM_DATA        EQU     $1900
                                             ;
                     ORG     PROGRAM_DATA
 INFO                FCB     'The total running time is %u sec.',$0D,$0A,$00
-DATA_1              FCB     $0000
-DATA_0              FCB     $0000
+; DATA_1              FCB     $0000
+; DATA_0              FCB     $0000
+DATA_1              EQU     $1800
+DATA_0              EQU     $1802
 DATA_TEMP			FCB		$0000
+DATA_TEMP_2         FCB     $0000
 PRINTF              EQU     $EE88
 TC2					EQU		$0054
 TC3					EQU		$0056
@@ -40,7 +43,7 @@ OC7D                EQU     $0043
 OC7D_M              EQU     %00001100
 TC2H                EQU     $0044
 TCTL4               EQU     $004B           ;EDG*3->EDG*0
-TCTL4_M             EQU     %00001010
+TCTL4_M             EQU     %00001001
 TIE                 EQU     $004C
 TIE_M               EQU     %00000011
 TFLG1               EQU     $004E
@@ -57,9 +60,14 @@ MAIN                ORG     PROGRAM_START   ;Starting address for the program
 
 					JSR		INIT_INTERRUPT
 					JSR		INIT_OUTPUT
+                    LDD     #!5723
+                    PSHD
 					JSR		MOVE_FORWARD
+                    MOVW    #$0000,TSCR1	;Clear T1 Pulse Accumulator
+                    MOVW    #$0000,TC2	    ;Clear T1 Pulse Accumulator
+                    MOVW    #$0000,TC3	    ;Clear T1 Pulse Accumulator
 
-					SWI
+                    SWI
 END_MAIN            END
 
 ;******************************************************************************;
@@ -73,17 +81,18 @@ MOVE_FORWARD
 					MOVW    #$0000,DATA_1	;Clear T1 Pulse Accumulator
 					MOVW    #$0000,DATA_0	;Clear T0 Pulse Accumulator
 					MOVW    #$0000,DATA_TEMP;Clear temp Pulse Accumulator
+                    MOVW    #$0000,DATA_TEMP_2
 					CLI
-
 FORWARD_LOOP
 
-IF_MAX_INTERVAL		LDD		2,SP
-					CPD		DATA_1
-					BLE		IF_MAX_INTERVAL_END
+IF_MAX_INTERVAL
+                    LDD		DATA_TEMP_2
+					CPD	    #!1400                  ;15 sec ish
+					BNE		IF_MAX_INTERVAL_END
 					JMP		END_MOVE_FORWARD
 IF_MAX_INTERVAL_END
 
-IF_ONE_SEC			LDD		DATA_TEMP
+IF_ONE_SEC			LDD		DATA_1
 					LDX		#!381
 					IDIV
 					CPD		#$0000
@@ -92,48 +101,44 @@ IF_ONE_SEC			LDD		DATA_TEMP
 					LDD     #INFO
 					LDX     PRINTF
 					JSR     0,X
+                    LEAS    2,SP
 IF_ONE_SEC_END
 
-IF_ACCEL			LDD		2,SP
-					LDX		#$0003
-					IDIV
-					CPX		DATA_1
+IF_ACCEL            LDD     DATA_1
+                    CPD     #!1908
 					BHI		IF_ACCEL_END
 					LDD		TC2
-					ADDD	#!16
+					ADDD	#!40
 					STD		TC2
 					LDD		TC3
-					ADDD	#!16
+					ADDD	#!40
 					STD		TC3
 					JMP		END_FORWARD_LOOP
 IF_ACCEL_END
 
-IF_CONST			LDD		2,SP
-					LDX		#$0003
-					IDIV
-					PSHX
-					PULY
-					LDD		#!2
-					EMUL
-					CPD		DATA_1
+IF_CONST			LDD     DATA_1
+                    CPD		#!3815
 					BHI		IF_CONST_END
 					;Do constant, which is nothing
 					JMP		END_FORWARD_LOOP
 IF_CONST_END
-
 					LDD		TC2
-					SUBD	#!14
+					SUBD	#!40
 					STD		TC2
 					LDD		TC3
-					SUBD	#!14
+					SUBD	#!40
 					STD		TC3
-
 
 END_FORWARD_LOOP	LDX		#$FFFF
 					JSR		DELAY
+                    LDD     DATA_TEMP_2
+                    ADDD    #$0001
+                    STD     DATA_TEMP_2
 					JMP		FORWARD_LOOP
-
 END_MOVE_FORWARD	RTS
+
+
+
 
 
 ;******************************************************************************;
@@ -160,9 +165,9 @@ INIT_OUTPUT			MOVB    #TIOS_M,TIOS
 					MOVB    #TCTL2_M,TCTL2  ;Configure reg to turn signals off
 					MOVB    #OC7M_M,OC7M    ;Configure OC7 system
 					MOVB    #OC7D_M,OC7D    ;Configure OC7 system
-					LDD     #$0000
+					LDD     #$3333          ;5%duty
 					STD     TC2
-					LDD     #$0000
+					LDD     #$3333
 					STD     TC3
 					LDD     #$0000
 					STD     TC7             ;turns on (tc7)
@@ -199,9 +204,9 @@ END_INIT_INTERRUPT	RTS
 T_0_INTERRUPT       LDD     DATA_0			;DATA_0++
                     ADDD    #$0001			;.
                     STD     DATA_0			;.
-					LDD     DATA_TEMP		;DATA_TEMP++
-                    ADDD    #$0001			;.
-                    STD     DATA_TEMP		;.
+					; LDD     DATA_TEMP		;DATA_TEMP++
+                    ; ADDD    #$0001			;.
+                    ; STD     DATA_TEMP		;.
                     LDAB    TFLG1			;Clear the Flag for interrupt T0
                     ORAB    %00000001		;.
                     STAB    TFLG1			;.

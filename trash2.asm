@@ -142,3 +142,26 @@ generateAccelerationIntervals
 ;*************************************************************************************************************
 generateVelocityList
 while1
+
+
+
+INIT_CLK_25         ;MOVB    #%00000000,PLLSEL
+                    ;MOVB    #SYNR_M,SYNR
+                    ;MOVB    #REFDV_M,REFDV
+                    ;SWI
+                    ; MOVB    #PLLSEL_M,PLLSEL
+END_INIT_CLK_25     RTS
+
+
+
+;Used for setting the operating
+;Frequency for the microprocessor
+;The equation for setting this up is
+;2*OSCLK*(SYNR + 1)/(REFDV + 1)
+;No idea if this actually works
+; SYNR                EQU     $0034
+; SYNR_M              EQU     !0
+; REFDV               EQU     $0035
+; REFDV_M             EQU     !3
+; PLLSEL              EQU     $0039
+; PLLSEL_M            EQU     %10000000

@@ -44,17 +44,19 @@ MAIN                ORG     PROGRAM_START   ;Starting address for the program
                     LDX     #$0FFF
                     JSR     DELAY
 
-                    MOVB    #ATD1CTL3_MASK,ATD1CTL3
-                    MOVB    #ATD1CTL4_MASK,ATD1CTL4
-                    MOVB    #ATD1CTL5_MASK,ATD1CTL5
-
-MAIN_POLL           BRCLR   ATDSTAT,$80,MAIN_POLL
 THINGY
                     MOVB    #ATD1CTL3_MASK,ATD1CTL3
                     MOVB    #ATD1CTL4_MASK,ATD1CTL4
                     MOVB    #ATD1CTL5_MASK,ATD1CTL5
+
+
+MAIN_POLL           BRCLR   ATDSTAT,$80,MAIN_POLL
+
+                    ; MOVB    #ATD1CTL3_MASK,ATD1CTL3
+                    ; MOVB    #ATD1CTL4_MASK,ATD1CTL4
+                    ; MOVB    #ATD1CTL5_MASK,ATD1CTL5
                     JSR     PRINT_SENSORS
-                    LDY     #$000F
+                    LDY     #$004F
                     JSR     DELAY_X
                     JMP     THINGY
 

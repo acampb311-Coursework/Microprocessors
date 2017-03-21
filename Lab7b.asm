@@ -78,16 +78,18 @@ MAIN                ORG     PROGRAM_START   ;Starting address for the program
 					; JSR		MOVE
                     ; LEAS    2,SP
                     ;
-                    ; MOVB    #FORWARD_MASK,PORTP
-                    ; LDD     #!620
-                    ; PSHD
-					; JSR		MOVE
-                    ; LEAS    2,SP
+
 
                     MOVB    #LEFT_MASK,PORTP
                     LDD     #!120
                     PSHD
 					JSR		MOVE
+                    LEAS    2,SP
+
+                    MOVB    #FORWARD_MASK,PORTP
+                    LDD     #!620
+                    PSHD
+                    JSR		MOVE
                     LEAS    2,SP
 
                     MOVB    #RIGHT_MASK,PORTP

@@ -60,8 +60,6 @@ MAIN                ORG     PROGRAM_START   ;Starting address for the program
 
 					JSR		INIT_INTERRUPT
 					JSR		INIT_OUTPUT
-                    LDD     #!5723
-                    PSHD
 					JSR		MOVE_FORWARD
                     MOVW    #$0000,TSCR1	;Clear T1 Pulse Accumulator
                     MOVW    #$0000,TC2	    ;Clear T1 Pulse Accumulator
@@ -75,7 +73,6 @@ END_MAIN            END
 ;automatically calculates the necessary trapezoidal nature of the acceleration,
 ;constant speed, and deceleration necessary.
 ;( 0 ) - Return Address             - Value         - 16 bits - Input
-;( 2 ) - Time Interval              - Value         - 16 bits - Input
 ;******************************************************************************;
 MOVE_FORWARD
 					MOVW    #$0000,DATA_1	;Clear T1 Pulse Accumulator

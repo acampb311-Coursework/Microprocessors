@@ -17,6 +17,8 @@ PROGRAM_START       EQU     $2200
 PROGRAM_DATA        EQU     $1900
 
                     ORG     PROGRAM_DATA
+PRINTF              EQU     $EE88
+INFO                FCB     'LEFT:%X  CENTER:%X  RIGHT:%X.',$0D,$0A,$00
 ATD1CTL2            EQU     $0122           ;I/R sensor Data
 ATD1CTL2_MASK       EQU     %10000000
 ATD1CTL3            EQU     $0123
@@ -29,7 +31,15 @@ ATDSTAT             EQU     $0126
 ATD1DR0H            EQU     $0130
 ATD1DR1H            EQU     $0132
 ATD1DR2H            EQU     $0134
-PORTJ               EQU     $0268           ;LCD Data
+LCD_FUNC_ON_CMD     EQU     %00111000       ;LCD Data
+LCD_ENTRY_MD_CMD    EQU     %00000110
+LCD_DISP_ON_CMD     EQU     %00001110
+LCD_DISP_CLR_CMD    EQU     %00000001
+LCD_MEM_LOC_1_CMD   EQU     %10000000
+LCD_MEM_LOC_2_CMD   EQU     %11000000
+DATA_WRITE_MASK     EQU     %01000010
+CMD_WRITE_MASK      EQU     %00000010
+PORTJ               EQU     $0268
 DDRJ                EQU     $026A
 J_IOMASK            EQU     %11111110
 PORTH               EQU     $0260
@@ -70,17 +80,112 @@ BACKWORD_MASK       EQU     %00000000
 LEFT_MASK           EQU     %10000000
 RIGHT_MASK          EQU     %01000000
 
+
+
 ;******************************************************************************;
 ;MAIN - Central Routine for program.
 ;******************************************************************************;
 MAIN                ORG     PROGRAM_START   ;Starting address for the program
                     LDS     #INIT_STACK		;Initialize the Stack
                     SEI						;Disable Maskable Interrupts
-                    JSR		INIT_INTERRUPT
-                    JSR		INIT_OUTPUT
+                    ; JSR		INIT_INTERRUPT
+                    ; JSR		INIT_OUTPUT
+                                            ;Initialize the ports
+                                            ;
+                    LDAA    #J_IOMASK       ;Initialize Port J
+                    PSHA                    ;
+                    LDD     #DDRJ           ;
+                    PSHD                    ;
+                    JSR     INIT_PORT       ;
+                    LEAS    3,SP            ;Clean up the stack
+
+                    LDAA    #H_IOMASK       ;Initialize Port H
+                    PSHA                    ;
+                    LDD     #DDRH           ;
+                    PSHD                    ;
+                    JSR     INIT_PORT       ;
+                    LEAS    3,SP            ;Clean up the stack
+
+                    LDAA    #%00001111      ;Blinkies!!!!
+                    PSHA                    ;
+                    LDD     #PORTH          ;
+                    PSHD                    ;
+                    JSR     LCD_COMMAND     ;
+                    LEAS    3,SP            ;Clean up the stack
+
+                    LDAA    #LCD_FUNC_ON_CMD;two lines
+                    PSHA                    ;
+                    LDD     #PORTH          ;
+                    PSHD                    ;
+                    JSR     LCD_COMMAND     ;
+                    LEAS    3,SP            ;Clean up the stack
+
+                    ; LDAA    #LCD_DISP_CLR_CMD;clear the display
+                    ; PSHA                    ;
+                    ; LDD     #PORTH          ;
+                    ; PSHD                    ;
+                    ; JSR     LCD_COMMAND     ;
+                    ; LEAS    3,SP            ;Clean up the stack
+
+
+                    MOVB    #ATD1CTL2_MASK,ATD1CTL2
+THINGY
+                    MOVB    #ATD1CTL3_MASK,ATD1CTL3
+                    MOVB    #ATD1CTL4_MASK,ATD1CTL4
+                    MOVB    #ATD1CTL5_MASK,ATD1CTL5
+
+MAIN_POLL           BRCLR   ATDSTAT,$80,MAIN_POLL
+                    LDAA    #LCD_DISP_CLR_CMD;clear the display
+                    PSHA                    ;
+                    LDD     #PORTH          ;
+                    PSHD                    ;
+                    JSR     LCD_COMMAND     ;
+                    LEAS    3,SP            ;Clean up the stack
+                    JSR     PRINT_MEMORY
+                    JSR     SAVE_SENSORS
+                    ; JSR     PRINT_SENSORS
+                    LDY     #$004F
+                    JSR     DELAY_X
+
+
+
+                    JMP     THINGY
 
                     SWI
 END_MAIN            END
+
+;******************************************************************************;
+;SAVE_SENSORS - Saves the values at the registers used for the ATD conversion.
+;( 0 ) - Return Address    - Value     - 16 bits - Input
+;******************************************************************************;
+SAVE_SENSORS        LDAB    ATD1DR0H
+                    STAB    $1800
+                    LDAB    ATD1DR1H
+                    STAB    $1801
+                    LDAB    ATD1DR2H
+                    STAB    $1802
+END_SAVE_SENSORS    RTS
+;******************************************************************************;
+;PRINT_SENSORS - Prints the values at the registers used for the ATD conversion.
+;( 0 ) - Return Address    - Value     - 16 bits - Input
+;******************************************************************************;
+PRINT_SENSORS       LDAB    ATD1DR0H
+                    CLRA
+                    STAB    $1800
+                    PSHD
+                    LDAB    ATD1DR1H
+                    CLRA
+                    STAB    $1801
+                    PSHD
+                    LDAB    ATD1DR2H
+                    CLRA
+                    STAB    $1802
+                    PSHD
+                    LDD     #INFO
+                    LDX     PRINTF
+                    JSR     0,X
+                    LEAS    6,SP
+END_PRINT_SENSORS   RTS
 
 ;******************************************************************************;
 ;BUSY_WAIT - This routine is used in order to display characters to the LCD as
@@ -377,6 +482,20 @@ LCD_COMMAND         JSR     BUSY_WAIT
                     STAB    PORTJ
                     JSR     PULSE_E
 END_LCD_COMMAND     RTS
+
+;******************************************************************************;
+;DELAY_X - Causes the program to 'delay' for a long period of time. It
+;accomplishes this by simply eating clock cycles for a predetermined number of
+;this value is: ((DesiredDelayTime/(1/16E6) - 11)/4)/65535.
+;( 0 ) - Return Address    - Value     - 16 bits - Input
+;( 2 ) - Delay Iterations  - Value     - 16 bits - Input
+;******************************************************************************;
+DELAY_X             LDX     #$FFFF
+INNER_DELAY_X       DEX
+					BNE     INNER_DELAY_X
+                    DEY
+                    BNE     DELAY_X
+                    RTS
 
 ;******************************************************************************;
 ;INIT_PORT - Prepares an I/O port for use. It applies the predetermined port

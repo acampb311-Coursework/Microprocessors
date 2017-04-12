@@ -51,8 +51,8 @@ Threshold           EQU     $55 	       ;Wall Closeness
 PORTP               EQU     $0258           ;Motor Control Data
 DDRP                EQU     $025A
 P_IOMASK            EQU     %11000000
-DATA_1              EQU     $1800           ;Counters for each motor rev
-DATA_0              EQU     $1802           ;Not sure if above 1800 is reserved
+DATA_1              EQU     $1804           ;Counters for each motor rev
+DATA_0              EQU     $1806           ;Not sure if above 1800 is reserved
 TC2					EQU		$0054
 TC3					EQU		$0056
 TC7					EQU		$005E
@@ -88,8 +88,8 @@ RIGHT_MASK          EQU     %01000000
 MAIN                ORG     PROGRAM_START   ;Starting address for the program
                     LDS     #INIT_STACK		;Initialize the Stack
                     SEI						;Disable Maskable Interrupts
-                    ; JSR		INIT_INTERRUPT
-                    ; JSR		INIT_OUTPUT
+                    JSR		INIT_INTERRUPT
+                    JSR		INIT_OUTPUT
                                             ;Initialize the ports
                                             ;
                     LDAA    #J_IOMASK       ;Initialize Port J
@@ -143,16 +143,46 @@ MAIN_POLL           BRCLR   ATDSTAT,$80,MAIN_POLL
                     LEAS    3,SP            ;Clean up the stack
                     JSR     PRINT_MEMORY
                     JSR     SAVE_SENSORS
+
                     ; JSR     PRINT_SENSORS
+
                     LDY     #$004F
                     JSR     DELAY_X
 
-
+                    MOVB    #RIGHT_MASK,PORTP
+                    LDD     #!100
+                    PSHD
+                    JSR		MOVE
+                    LEAS    2,SP
 
                     JMP     THINGY
 
+                    MOVW    #$0000,TSCR1	;Clear T1 Pulse Accumulator
+                    MOVW    #$0000,TC2	    ;Clear T1 Pulse Accumulator
+                    MOVW    #$0000,TC3	    ;Clear T1 Pulse Accumulator
+
                     SWI
 END_MAIN            END
+
+
+;******************************************************************************;
+;MOVE - Moves the robot forward for a specified number of pulses.
+;( 0 ) - Return Address             - Value         - 16 bits - Input
+;( 2 ) - Number of pulses           - Value         - 16 bits - Input
+;******************************************************************************;
+MOVE
+                    MOVW    #$0000,DATA_1	;Clear T1 Pulse Accumulator
+                    MOVW    #$0000,DATA_0	;Clear T0 Pulse Accumulator
+                    CLI
+
+FOR_PULSES          BRCLR   TFLG1,$04,FOR_PULSES
+                    LDX     DATA_1
+                    CPX     2,SP
+                    BHS     END_FOR_PULSES
+                    JMP     FOR_PULSES
+END_FOR_PULSES
+                    SEI
+END_MOVE            RTS
 
 ;******************************************************************************;
 ;SAVE_SENSORS - Saves the values at the registers used for the ATD conversion.

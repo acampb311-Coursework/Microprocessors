@@ -79,7 +79,9 @@ FORWARD_MASK        EQU     %11000000
 BACKWORD_MASK       EQU     %00000000
 LEFT_MASK           EQU     %10000000
 RIGHT_MASK          EQU     %01000000
-
+LEFT_SENSOR         EQU     $1800
+CENTER_SENSOR       EQU     $1801
+RIGHT_SENSOR        EQU     $1802
 
 
 ;******************************************************************************;
@@ -89,10 +91,57 @@ MAIN                ORG     PROGRAM_START   ;Starting address for the program
                     LDS     #INIT_STACK		;Initialize the Stack
                     SEI						;Disable Maskable Interrupts
                     JSR		INIT_INTERRUPT
-                    JSR		INIT_OUTPUT
-                                            ;Initialize the ports
-                                            ;
-                    LDAA    #J_IOMASK       ;Initialize Port J
+                    ; JSR		INIT_OUTPUT
+                    JSR     INIT_LCD
+
+                    MOVB    #FORWARD_MASK,PORTP
+                    LDD     #!620
+                    PSHD
+                    JSR		MOVE
+                    LEAS    2,SP
+
+
+                    MOVB    #ATD1CTL2_MASK,ATD1CTL2
+THINGY
+                    MOVB    #ATD1CTL3_MASK,ATD1CTL3
+                    MOVB    #ATD1CTL4_MASK,ATD1CTL4
+                    MOVB    #ATD1CTL5_MASK,ATD1CTL5
+
+MAIN_POLL           BRCLR   ATDSTAT,$80,MAIN_POLL
+                    LDAA    #LCD_DISP_CLR_CMD;clear the display
+                    PSHA                    ;
+                    LDD     #PORTH          ;
+                    PSHD                    ;
+                    JSR     LCD_COMMAND     ;
+                    LEAS    3,SP            ;Clean up the stack
+                    JSR     SAVE_SENSORS
+                    JSR     PRINT_MEMORY
+
+                    ; MOVB    #RIGHT_MASK,PORTP
+                    ; LDD     #!620
+                    ; PSHD
+                    ; JSR		MOVE
+                    ; LEAS    2,SP
+
+
+                    LDY     #$004F
+                    JSR     DELAY_X
+
+                    JMP     THINGY
+
+                    MOVW    #$0000,TSCR1	;Clear T1 Pulse Accumulator
+                    MOVW    #$0000,TC2	    ;Clear T1 Pulse Accumulator
+                    MOVW    #$0000,TC3	    ;Clear T1 Pulse Accumulator
+
+                    SWI
+END_MAIN            END
+
+
+;******************************************************************************;
+;INIT_LCD - Starts up the LCD
+;( 0 ) - Return Address             - Value         - 16 bits - Input
+;******************************************************************************;
+INIT_LCD            LDAA    #J_IOMASK       ;Initialize Port J
                     PSHA                    ;
                     LDD     #DDRJ           ;
                     PSHD                    ;
@@ -119,62 +168,16 @@ MAIN                ORG     PROGRAM_START   ;Starting address for the program
                     PSHD                    ;
                     JSR     LCD_COMMAND     ;
                     LEAS    3,SP            ;Clean up the stack
-
-                    ; LDAA    #LCD_DISP_CLR_CMD;clear the display
-                    ; PSHA                    ;
-                    ; LDD     #PORTH          ;
-                    ; PSHD                    ;
-                    ; JSR     LCD_COMMAND     ;
-                    ; LEAS    3,SP            ;Clean up the stack
-
-
-                    MOVB    #ATD1CTL2_MASK,ATD1CTL2
-THINGY
-                    MOVB    #ATD1CTL3_MASK,ATD1CTL3
-                    MOVB    #ATD1CTL4_MASK,ATD1CTL4
-                    MOVB    #ATD1CTL5_MASK,ATD1CTL5
-
-MAIN_POLL           BRCLR   ATDSTAT,$80,MAIN_POLL
-                    LDAA    #LCD_DISP_CLR_CMD;clear the display
-                    PSHA                    ;
-                    LDD     #PORTH          ;
-                    PSHD                    ;
-                    JSR     LCD_COMMAND     ;
-                    LEAS    3,SP            ;Clean up the stack
-                    JSR     PRINT_MEMORY
-                    JSR     SAVE_SENSORS
-
-                    ; JSR     PRINT_SENSORS
-
-                    LDY     #$004F
-                    JSR     DELAY_X
-
-                    MOVB    #RIGHT_MASK,PORTP
-                    LDD     #!100
-                    PSHD
-                    JSR		MOVE
-                    LEAS    2,SP
-
-                    JMP     THINGY
-
-                    MOVW    #$0000,TSCR1	;Clear T1 Pulse Accumulator
-                    MOVW    #$0000,TC2	    ;Clear T1 Pulse Accumulator
-                    MOVW    #$0000,TC3	    ;Clear T1 Pulse Accumulator
-
-                    SWI
-END_MAIN            END
-
+END_INIT_LCD        RTS
 
 ;******************************************************************************;
 ;MOVE - Moves the robot forward for a specified number of pulses.
 ;( 0 ) - Return Address             - Value         - 16 bits - Input
 ;( 2 ) - Number of pulses           - Value         - 16 bits - Input
 ;******************************************************************************;
-MOVE
-                    MOVW    #$0000,DATA_1	;Clear T1 Pulse Accumulator
+MOVE                MOVW    #$0000,DATA_1	;Clear T1 Pulse Accumulator
                     MOVW    #$0000,DATA_0	;Clear T0 Pulse Accumulator
                     CLI
-
 FOR_PULSES          BRCLR   TFLG1,$04,FOR_PULSES
                     LDX     DATA_1
                     CPX     2,SP
@@ -264,9 +267,9 @@ INIT_OUTPUT			MOVB    #TIOS_M,TIOS
 					MOVB    #OC7D_M,OC7D    ;Configure OC7 system
                     MOVB    #P_IOMASK,DDRP
 
-					LDD     #$3333          ;5%duty
+					LDD     #$4000          ;5%duty
 					STD     TC2
-					LDD     #$3333
+					LDD     #$4000
 					STD     TC3
 					LDD     #$0000
 					STD     TC7             ;turns on (tc7)

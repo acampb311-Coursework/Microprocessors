@@ -47,7 +47,7 @@ DDRH                EQU     $0262
 H_IOMASK            EQU     %11111111
 FIRST_HALF          FCB     $0000
 SECOND_HALF         FCB     $0000
-Threshold           EQU     $55 	       ;Wall Closeness
+Threshold           EQU     $55 	        ;Wall Closeness
 PORTP               EQU     $0258           ;Motor Control Data
 DDRP                EQU     $025A
 P_IOMASK            EQU     %11000000
@@ -91,43 +91,75 @@ MAIN                ORG     PROGRAM_START   ;Starting address for the program
                     LDS     #INIT_STACK		;Initialize the Stack
                     SEI						;Disable Maskable Interrupts
                     JSR		INIT_INTERRUPT
-                    ; JSR		INIT_OUTPUT
+                    JSR		INIT_OUTPUT
                     JSR     INIT_LCD
 
                     MOVB    #FORWARD_MASK,PORTP
-                    LDD     #!620
+                    LDD     #!5
                     PSHD
                     JSR		MOVE
                     LEAS    2,SP
 
 
                     MOVB    #ATD1CTL2_MASK,ATD1CTL2
-THINGY
+MOVING
                     MOVB    #ATD1CTL3_MASK,ATD1CTL3
                     MOVB    #ATD1CTL4_MASK,ATD1CTL4
                     MOVB    #ATD1CTL5_MASK,ATD1CTL5
 
 MAIN_POLL           BRCLR   ATDSTAT,$80,MAIN_POLL
-                    LDAA    #LCD_DISP_CLR_CMD;clear the display
-                    PSHA                    ;
-                    LDD     #PORTH          ;
-                    PSHD                    ;
-                    JSR     LCD_COMMAND     ;
-                    LEAS    3,SP            ;Clean up the stack
                     JSR     SAVE_SENSORS
+
+IF_BLK_FRNT         LDAA    #Threshold
+                    CMPA    CENTER_SENSOR   ;If (THRESH > CENTER)
+                    BHI     END_IF_BLK_FRNT
+
+IF_OPN_RIGHT        LDAA    #Threshold
+                    CMPA    RIGHT_SENSOR
+                    BHI     IF_OPN_LEFT
+
+                    MOVB    #RIGHT_MASK,PORTP
+                    LDD     #!620
+                    PSHD
+                    JSR		MOVE
+                    LEAS    2,SP
+                    JMP     END_LOGIC
+
+IF_OPN_LEFT         LDAA    #Threshold
+                    CMPA    LEFT_SENSOR
+                    BHI     IF_OPN_LEFT
+
+                    MOVB    #LEFT_MASK,PORTP
+                    LDD     #!620
+                    PSHD
+                    JSR		MOVE
+                    LEAS    2,SP
+                    JMP     END_LOGIC
+
+END_IF_BLK_FRNT
+IF_SIDE_OPN         LDAA    #Threshold
+                    CMPA    LEFT_SENSOR
+                    BLS     NO_MOVE_MADE
+
+                    MOVB    #FORWARD_MASK,PORTP
+                    LDD     #!5
+                    PSHD
+                    JSR		MOVE
+                    LEAS    2,SP
+
+NO_MOVE_MADE
+                    MOVB    #FORWARD_MASK,PORTP
+                    LDD     #!5
+                    PSHD
+                    JSR		MOVE
+                    LEAS    2,SP
+END_LOGIC
+                    JMP     MOVING
+
                     JSR     PRINT_MEMORY
 
-                    ; MOVB    #RIGHT_MASK,PORTP
-                    ; LDD     #!620
-                    ; PSHD
-                    ; JSR		MOVE
-                    ; LEAS    2,SP
-
-
-                    LDY     #$004F
-                    JSR     DELAY_X
-
-                    JMP     THINGY
+                    ; LDY     #$004F
+                    ; JSR     DELAY_X
 
                     MOVW    #$0000,TSCR1	;Clear T1 Pulse Accumulator
                     MOVW    #$0000,TC2	    ;Clear T1 Pulse Accumulator
@@ -177,6 +209,13 @@ END_INIT_LCD        RTS
 ;******************************************************************************;
 MOVE                MOVW    #$0000,DATA_1	;Clear T1 Pulse Accumulator
                     MOVW    #$0000,DATA_0	;Clear T0 Pulse Accumulator
+                    LDAA    #LCD_DISP_CLR_CMD;clear the display
+                    PSHA                    ;
+                    LDD     #PORTH          ;
+                    PSHD                    ;
+                    JSR     LCD_COMMAND     ;
+                    LEAS    3,SP            ;Clean up the stack
+
                     CLI
 FOR_PULSES          BRCLR   TFLG1,$04,FOR_PULSES
                     LDX     DATA_1

@@ -77,13 +77,13 @@ T_0_OFFSET			EQU		!55
 T_1_OFFSET			EQU		!54
 FORWARD_MASK        EQU     %11000000
 BACKWORD_MASK       EQU     %00000000
-LEFT_MASK           EQU     %10000000
-RIGHT_MASK          EQU     %01000000
+RIGHT_MASK          EQU     %10000000
+LEFT_MASK           EQU     %01000000
 LEFT_SENSOR         EQU     $1800
 CENTER_SENSOR       EQU     $1801
 RIGHT_SENSOR        EQU     $1802
-
-
+DEGREE_90_TURN      EQU     !500
+DEGREE_180_TURN     EQU     !1000
 ;******************************************************************************;
 ;MAIN - Central Routine for program.
 ;******************************************************************************;
@@ -100,7 +100,7 @@ MAIN                ORG     PROGRAM_START   ;Starting address for the program
                     JSR		MOVE
                     LEAS    2,SP
 
-
+                    JSR     SAVE_SENSORS
                     MOVB    #ATD1CTL2_MASK,ATD1CTL2
 MOVING
                     MOVB    #ATD1CTL3_MASK,ATD1CTL3
@@ -110,42 +110,69 @@ MOVING
 MAIN_POLL           BRCLR   ATDSTAT,$80,MAIN_POLL
                     JSR     SAVE_SENSORS
 
+IF_VEER_RIGHT       LDAA    #$55
+                    CMPA    RIGHT_SENSOR   ;If (55 > RIGHT)
+                    BHI     IF_VEER_LEFT
+                    MOVB    #RIGHT_MASK,PORTP
+                    LDD     #!5
+                    PSHD
+                    JSR		MOVE
+                    LEAS    2,SP
+                    JMP     IF_BLK_FRNT
+
+IF_VEER_LEFT        LDAA    #$4F
+                    CMPA    RIGHT_SENSOR   ;If (4F <= RIGHT)
+                    BLS     IF_BLK_FRNT
+                    MOVB    #LEFT_MASK,PORTP
+                    LDD     #!5
+                    PSHD
+                    JSR		MOVE
+                    LEAS    2,SP
+                    JMP     IF_BLK_FRNT
+
 IF_BLK_FRNT         LDAA    #Threshold
                     CMPA    CENTER_SENSOR   ;If (THRESH > CENTER)
                     BHI     END_IF_BLK_FRNT
 
 IF_OPN_RIGHT        LDAA    #Threshold
                     CMPA    RIGHT_SENSOR
-                    BHI     IF_OPN_LEFT
+                    BLS     END_IF_BLK_FRNT
 
                     MOVB    #RIGHT_MASK,PORTP
-                    LDD     #!620
+                    LDD     #DEGREE_90_TURN
                     PSHD
                     JSR		MOVE
                     LEAS    2,SP
                     JMP     END_LOGIC
 
-IF_OPN_LEFT         LDAA    #Threshold
-                    CMPA    LEFT_SENSOR
-                    BHI     IF_OPN_LEFT
+; IF_OPN_LEFT         LDAA    #Threshold
+;                     CMPA    LEFT_SENSOR
+;                     BLS     IF_DEAD_END
+;
+;                     MOVB    #LEFT_MASK,PORTP
+;                     LDD     #DEGREE_90_TURN
+;                     PSHD
+;                     JSR		MOVE
+;                     LEAS    2,SP
+;                     JMP     END_LOGIC
 
-                    MOVB    #LEFT_MASK,PORTP
-                    LDD     #!620
-                    PSHD
-                    JSR		MOVE
-                    LEAS    2,SP
-                    JMP     END_LOGIC
-
+; IF_DEAD_END         MOVB    #LEFT_MASK,PORTP
+;                     LDD     #DEGREE_180_TURN
+;                     PSHD
+;                     JSR		MOVE
+;                     LEAS    2,SP
+;                     JMP     END_LOGIC
 END_IF_BLK_FRNT
-IF_SIDE_OPN         LDAA    #Threshold
-                    CMPA    LEFT_SENSOR
-                    BLS     NO_MOVE_MADE
-
-                    MOVB    #FORWARD_MASK,PORTP
-                    LDD     #!5
-                    PSHD
-                    JSR		MOVE
-                    LEAS    2,SP
+; IF_SIDE_OPN         LDAA    #Threshold
+;                     CMPA    RIGHT_SENSOR
+;                     BLS     NO_MOVE_MADE
+;
+;                     MOVB    #RIGHT_MASK,PORTP
+;                     LDD     #DEGREE_90_TURN
+;                     PSHD
+;                     JSR		MOVE
+;                     LEAS    2,SP
+;                     JMP     END_LOGIC
 
 NO_MOVE_MADE
                     MOVB    #FORWARD_MASK,PORTP
@@ -154,12 +181,20 @@ NO_MOVE_MADE
                     JSR		MOVE
                     LEAS    2,SP
 END_LOGIC
-                    JMP     MOVING
+
+                    LDAA    #LCD_MEM_LOC_1_CMD;clear the display
+                    PSHA                    ;
+                    LDD     #PORTH          ;
+                    PSHD                    ;
+                    JSR     LCD_COMMAND     ;
+                    LEAS    3,SP            ;Clean up the stack
 
                     JSR     PRINT_MEMORY
 
                     ; LDY     #$004F
                     ; JSR     DELAY_X
+
+                    JMP     MOVING
 
                     MOVW    #$0000,TSCR1	;Clear T1 Pulse Accumulator
                     MOVW    #$0000,TC2	    ;Clear T1 Pulse Accumulator
@@ -584,7 +619,8 @@ END_INIT_PORT       RTS
 ;******************************************************************************;
 ;T_0_INTERRUPT - Interrupt Service Routine that increments a pulse counter.
 ;******************************************************************************;
-T_0_INTERRUPT       LDD     DATA_0			;DATA_0++
+T_0_INTERRUPT
+                    LDD     DATA_0			;DATA_0++
                     ADDD    #$0001			;.
                     STD     DATA_0			;.
                     LDAB    TFLG1			;Clear the Flag for interrupt T0
@@ -595,7 +631,8 @@ END_T_0_INTERRUPT   RTI						;Return From Interrupt
 ;******************************************************************************;
 ;T_1_INTERRUPT - Interrupt Service Routine that increments a pulse counter.
 ;******************************************************************************;
-T_1_INTERRUPT       LDD     DATA_1			;DATA_1++
+T_1_INTERRUPT
+                    LDD     DATA_1			;DATA_1++
                     ADDD    #$0001			;.
                     STD     DATA_1			;.
                     LDAB    TFLG1			;Clear the Flag for interrupt T1

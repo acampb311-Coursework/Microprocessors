@@ -82,7 +82,7 @@ LEFT_MASK           EQU     %01000000
 LEFT_SENSOR         EQU     $1800
 CENTER_SENSOR       EQU     $1801
 RIGHT_SENSOR        EQU     $1802
-DEGREE_90_TURN      EQU     !500
+DEGREE_90_TURN      EQU     !400
 DEGREE_180_TURN     EQU     !1000
 ;******************************************************************************;
 ;MAIN - Central Routine for program.
@@ -118,32 +118,42 @@ IF_VEER_RIGHT       LDAA    #$55
                     PSHD
                     JSR		MOVE
                     LEAS    2,SP
-                    JMP     IF_BLK_FRNT
+                    JMP     END_LOGIC
 
-IF_VEER_LEFT        LDAA    #$4F
+IF_VEER_LEFT        LDAA    #$35
                     CMPA    RIGHT_SENSOR   ;If (4F <= RIGHT)
-                    BLS     IF_BLK_FRNT
+                    BHI     IF_OPN_RIGHT
+                    LDAA    #$52
+                    CMPA    RIGHT_SENSOR   ;If (4F <= RIGHT)
+                    BLS     IF_OPN_RIGHT
                     MOVB    #LEFT_MASK,PORTP
                     LDD     #!5
                     PSHD
                     JSR		MOVE
                     LEAS    2,SP
-                    JMP     IF_BLK_FRNT
-
-IF_BLK_FRNT         LDAA    #Threshold
-                    CMPA    CENTER_SENSOR   ;If (THRESH > CENTER)
-                    BHI     END_IF_BLK_FRNT
+                    JMP     END_LOGIC
 
 IF_OPN_RIGHT        LDAA    #Threshold
                     CMPA    RIGHT_SENSOR
-                    BLS     END_IF_BLK_FRNT
+                    BLS     IF_BLK_FRNT
+                    MOVB    #FORWARD_MASK,PORTP
+                    LDD     #!5
+                    PSHD
+                    JSR		MOVE
+                    LEAS    2,SP
 
-                    MOVB    #RIGHT_MASK,PORTP
+                    MOVB    #LEFT_MASK,PORTP
                     LDD     #DEGREE_90_TURN
                     PSHD
                     JSR		MOVE
                     LEAS    2,SP
                     JMP     END_LOGIC
+
+IF_BLK_FRNT         LDAA    #Threshold
+                    CMPA    CENTER_SENSOR
+                    BHI     END_IF_BLK_FRNT
+
+
 
 ; IF_OPN_LEFT         LDAA    #Threshold
 ;                     CMPA    LEFT_SENSOR

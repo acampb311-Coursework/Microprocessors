@@ -82,8 +82,10 @@ LEFT_MASK           EQU     %01000000
 LEFT_SENSOR         EQU     $1800
 CENTER_SENSOR       EQU     $1801
 RIGHT_SENSOR        EQU     $1802
-DEGREE_90_TURN      EQU     !400
+DEGREE_90_TURN      EQU     !425
 DEGREE_180_TURN     EQU     !1000
+FLAGGY              EQU     $1810
+
 ;******************************************************************************;
 ;MAIN - Central Routine for program.
 ;******************************************************************************;
@@ -94,6 +96,8 @@ MAIN                ORG     PROGRAM_START   ;Starting address for the program
                     JSR		INIT_OUTPUT
                     JSR     INIT_LCD
 
+                    MOVB    #!0,FLAGGY
+
                     MOVB    #FORWARD_MASK,PORTP
                     LDD     #!5
                     PSHD
@@ -101,108 +105,26 @@ MAIN                ORG     PROGRAM_START   ;Starting address for the program
                     LEAS    2,SP
 
                     JSR     SAVE_SENSORS
+
                     MOVB    #ATD1CTL2_MASK,ATD1CTL2
 MOVING
-                    MOVB    #ATD1CTL3_MASK,ATD1CTL3
-                    MOVB    #ATD1CTL4_MASK,ATD1CTL4
-                    MOVB    #ATD1CTL5_MASK,ATD1CTL5
+                    JSR     REFRSH_SENSORS
 
-MAIN_POLL           BRCLR   ATDSTAT,$80,MAIN_POLL
-                    JSR     SAVE_SENSORS
-
-IF_VEER_RIGHT       LDAA    #$55
-                    CMPA    RIGHT_SENSOR   ;If (55 > RIGHT)
-                    BHI     IF_VEER_LEFT
-                    MOVB    #RIGHT_MASK,PORTP
-                    LDD     #!5
-                    PSHD
-                    JSR		MOVE
-                    LEAS    2,SP
-                    JMP     END_LOGIC
-
-IF_VEER_LEFT        LDAA    #$35
-                    CMPA    RIGHT_SENSOR   ;If (4F <= RIGHT)
-                    BHI     IF_OPN_RIGHT
-                    LDAA    #$52
-                    CMPA    RIGHT_SENSOR   ;If (4F <= RIGHT)
-                    BLS     IF_OPN_RIGHT
-                    MOVB    #LEFT_MASK,PORTP
-                    LDD     #!5
-                    PSHD
-                    JSR		MOVE
-                    LEAS    2,SP
-                    JMP     END_LOGIC
-
-IF_OPN_RIGHT        LDAA    #Threshold
-                    CMPA    RIGHT_SENSOR
-                    BLS     IF_BLK_FRNT
-                    MOVB    #FORWARD_MASK,PORTP
-                    LDD     #!5
-                    PSHD
-                    JSR		MOVE
-                    LEAS    2,SP
-
-                    MOVB    #LEFT_MASK,PORTP
-                    LDD     #DEGREE_90_TURN
-                    PSHD
-                    JSR		MOVE
-                    LEAS    2,SP
-                    JMP     END_LOGIC
-
-IF_BLK_FRNT         LDAA    #Threshold
-                    CMPA    CENTER_SENSOR
-                    BHI     END_IF_BLK_FRNT
-
-
-
-; IF_OPN_LEFT         LDAA    #Threshold
-;                     CMPA    LEFT_SENSOR
-;                     BLS     IF_DEAD_END
-;
-;                     MOVB    #LEFT_MASK,PORTP
-;                     LDD     #DEGREE_90_TURN
-;                     PSHD
-;                     JSR		MOVE
-;                     LEAS    2,SP
-;                     JMP     END_LOGIC
-
-; IF_DEAD_END         MOVB    #LEFT_MASK,PORTP
-;                     LDD     #DEGREE_180_TURN
-;                     PSHD
-;                     JSR		MOVE
-;                     LEAS    2,SP
-;                     JMP     END_LOGIC
-END_IF_BLK_FRNT
-; IF_SIDE_OPN         LDAA    #Threshold
-;                     CMPA    RIGHT_SENSOR
-;                     BLS     NO_MOVE_MADE
-;
-;                     MOVB    #RIGHT_MASK,PORTP
-;                     LDD     #DEGREE_90_TURN
-;                     PSHD
-;                     JSR		MOVE
-;                     LEAS    2,SP
-;                     JMP     END_LOGIC
-
-NO_MOVE_MADE
-                    MOVB    #FORWARD_MASK,PORTP
-                    LDD     #!5
-                    PSHD
-                    JSR		MOVE
-                    LEAS    2,SP
+                    JSR     CHK_CENT_BLK
+                    JSR     CHK_VEER_RIGHT
+                    JSR     CHK_VEER_LEFT
+; IF_MOVE             LDAB    FLAGGY
+;                     CMPB    #!1
+;                     BEQ     END_LOGIC
+                    ; JSR     CHK_OPN_RIGHT
 END_LOGIC
-
-                    LDAA    #LCD_MEM_LOC_1_CMD;clear the display
-                    PSHA                    ;
-                    LDD     #PORTH          ;
-                    PSHD                    ;
-                    JSR     LCD_COMMAND     ;
-                    LEAS    3,SP            ;Clean up the stack
+                    MOVB    #FORWARD_MASK,PORTP
+                    LDD     #!5
+                    PSHD
+                    JSR		MOVE
+                    LEAS    2,SP
 
                     JSR     PRINT_MEMORY
-
-                    ; LDY     #$004F
-                    ; JSR     DELAY_X
 
                     JMP     MOVING
 
@@ -213,6 +135,121 @@ END_LOGIC
                     SWI
 END_MAIN            END
 
+REFRSH_SENSORS
+                    MOVB    #ATD1CTL3_MASK,ATD1CTL3
+                    MOVB    #ATD1CTL4_MASK,ATD1CTL4
+                    MOVB    #ATD1CTL5_MASK,ATD1CTL5
+
+MAIN_POLL           BRCLR   ATDSTAT,$80,MAIN_POLL
+                    JSR     SAVE_SENSORS
+                    JSR     PRINT_MEMORY
+
+END_REFRSH_SENSORS  RTS
+
+;******************************************************************************;
+;CHK_OPN_RIGHT - Decides if the robot should turn right.
+;( 0 ) - Return Address             - Value         - 16 bits - Input
+;******************************************************************************;
+CHK_OPN_RIGHT       LDAA    #$20
+                    CMPA    RIGHT_SENSOR
+                    BLS     END_CHK_OPN_RIGHT
+                    MOVB    #!1,FLAGGY
+                    JSR     PRINT_SPOT
+
+                    MOVB    #FORWARD_MASK,PORTP
+                    LDD     #!425
+                    PSHD
+                    JSR		MOVE
+                    LEAS    2,SP
+
+                    JSR     REFRSH_SENSORS
+
+                    ; LDAA    #$20
+                    ; CMPA    CENTER_SENSOR
+                    ; BHI     END_CHK_OPN_RIGHT
+                    JSR     CLEAR_SPOT
+
+                    LDAA    #$20
+                    CMPA    RIGHT_SENSOR
+                    BLS     END_CHK_OPN_RIGHT
+
+                    MOVB    #LEFT_MASK,PORTP
+                    LDD     #DEGREE_90_TURN
+                    PSHD
+                    JSR		MOVE
+                    LEAS    2,SP
+
+                    ; JSR     REFRSH_SENSORS
+
+                    ; MOVB    #FORWARD_MASK,PORTP
+                    ; LDD     #!100
+                    ; PSHD
+                    ; JSR		MOVE
+                    ; LEAS    2,SP
+
+END_CHK_OPN_RIGHT   RTS
+
+
+;******************************************************************************;
+;CHK_CENT_BLK - Decides what happens when the robot has approached a wall.
+;( 0 ) - Return Address             - Value         - 16 bits - Input
+;******************************************************************************;
+CHK_CENT_BLK        LDAA    #$55
+                    CMPA    CENTER_SENSOR
+                    BHI     END_CHK_CENT_BLK
+                    MOVB    #!0,FLAGGY
+
+                    LDAA    #$35
+                    CMPA    RIGHT_SENSOR
+                    BLS     TURN_RIGHT
+
+                    MOVB    #LEFT_MASK,PORTP
+                    LDD     #DEGREE_90_TURN
+                    PSHD
+                    JSR		MOVE
+                    LEAS    2,SP
+                    JMP     END_CHK_CENT_BLK
+TURN_RIGHT
+                    MOVB    #RIGHT_MASK,PORTP
+                    LDD     #DEGREE_90_TURN
+                    PSHD
+                    JSR		MOVE
+                    LEAS    2,SP
+
+END_CHK_CENT_BLK
+                    RTS
+
+;******************************************************************************;
+;CHK_VEER_RIGHT - Keeps the robot in the middle of the path.
+;( 0 ) - Return Address             - Value         - 16 bits - Input
+;******************************************************************************;
+CHK_VEER_RIGHT      LDAA    #$55
+                    CMPA    RIGHT_SENSOR
+                    BHI     END_CHK_VEER_RIGHT
+                    MOVB    #!0,FLAGGY
+
+                    MOVB    #RIGHT_MASK,PORTP
+                    LDD     #!5
+                    PSHD
+                    JSR		MOVE
+                    LEAS    2,SP
+END_CHK_VEER_RIGHT  RTS
+
+;******************************************************************************;
+;CHK_VEER_LEFT - Keeps the robot in the middle of the path.
+;( 0 ) - Return Address             - Value         - 16 bits - Input
+;******************************************************************************;
+CHK_VEER_LEFT       LDAA    #$55
+                    CMPA    LEFT_SENSOR
+                    BHI     END_CHK_VEER_LEFT
+                    MOVB    #!0,FLAGGY
+
+                    MOVB    #LEFT_MASK,PORTP
+                    LDD     #!10
+                    PSHD
+                    JSR		MOVE
+                    LEAS    2,SP
+END_CHK_VEER_LEFT   RTS
 
 ;******************************************************************************;
 ;INIT_LCD - Starts up the LCD
@@ -247,6 +284,37 @@ INIT_LCD            LDAA    #J_IOMASK       ;Initialize Port J
                     LEAS    3,SP            ;Clean up the stack
 END_INIT_LCD        RTS
 
+
+PRINT_SPOT          LDAA    #LCD_MEM_LOC_2_CMD;clear the display
+                    PSHA                    ;
+                    LDD     #PORTH          ;
+                    PSHD                    ;
+                    JSR     LCD_COMMAND     ;
+                    LEAS    3,SP            ;Clean up the stack
+
+                    LDAA    #$4C            ;'L'
+                    PSHA                    ;
+                    LDD     #PORTH          ;
+                    PSHD                    ;
+                    JSR     LCD_DATA        ;
+                    LEAS    3,SP            ;Clean up the stack
+END_PRINT_SPOT      RTS
+
+
+CLEAR_SPOT          LDAA    #LCD_MEM_LOC_2_CMD;clear the display
+                    PSHA                    ;
+                    LDD     #PORTH          ;
+                    PSHD                    ;
+                    JSR     LCD_COMMAND     ;
+                    LEAS    3,SP            ;Clean up the stack
+
+                    LDAA    #$20            ;' '
+                    PSHA                    ;
+                    LDD     #PORTH          ;
+                    PSHD                    ;
+                    JSR     LCD_DATA        ;
+                    LEAS    3,SP            ;Clean up the stack
+END_CLEAR_SPOT      RTS
 ;******************************************************************************;
 ;MOVE - Moves the robot forward for a specified number of pulses.
 ;( 0 ) - Return Address             - Value         - 16 bits - Input
@@ -254,12 +322,6 @@ END_INIT_LCD        RTS
 ;******************************************************************************;
 MOVE                MOVW    #$0000,DATA_1	;Clear T1 Pulse Accumulator
                     MOVW    #$0000,DATA_0	;Clear T0 Pulse Accumulator
-                    LDAA    #LCD_DISP_CLR_CMD;clear the display
-                    PSHA                    ;
-                    LDD     #PORTH          ;
-                    PSHD                    ;
-                    JSR     LCD_COMMAND     ;
-                    LEAS    3,SP            ;Clean up the stack
 
                     CLI
 FOR_PULSES          BRCLR   TFLG1,$04,FOR_PULSES
@@ -270,6 +332,7 @@ FOR_PULSES          BRCLR   TFLG1,$04,FOR_PULSES
 END_FOR_PULSES
                     SEI
 END_MOVE            RTS
+
 
 ;******************************************************************************;
 ;SAVE_SENSORS - Saves the values at the registers used for the ATD conversion.
@@ -282,6 +345,7 @@ SAVE_SENSORS        LDAB    ATD1DR0H
                     LDAB    ATD1DR2H
                     STAB    $1802
 END_SAVE_SENSORS    RTS
+
 ;******************************************************************************;
 ;PRINT_SENSORS - Prints the values at the registers used for the ATD conversion.
 ;( 0 ) - Return Address    - Value     - 16 bits - Input
@@ -351,7 +415,7 @@ INIT_OUTPUT			MOVB    #TIOS_M,TIOS
 					MOVB    #OC7D_M,OC7D    ;Configure OC7 system
                     MOVB    #P_IOMASK,DDRP
 
-					LDD     #$4000          ;5%duty
+					LDD     #$4000          ;duty
 					STD     TC2
 					LDD     #$4000
 					STD     TC3
@@ -388,7 +452,15 @@ END_INIT_INTERRUPT	RTS
 ;PRINT_MEMORY - Routine for displaying the contents of a memory location to
 ;an attached LCD
 ;******************************************************************************;
-PRINT_MEMORY        LDAA    #$4C            ;'L'
+PRINT_MEMORY
+                    LDAA    #LCD_MEM_LOC_1_CMD;clear the display
+                    PSHA                    ;
+                    LDD     #PORTH          ;
+                    PSHD                    ;
+                    JSR     LCD_COMMAND     ;
+                    LEAS    3,SP            ;Clean up the stack
+
+                    LDAA    #$4C            ;'L'
                     PSHA                    ;
                     LDD     #PORTH          ;
                     PSHD                    ;
@@ -519,9 +591,7 @@ PRINT_MEMORY        LDAA    #$4C            ;'L'
 END_PRINT_MEMORY    RTS
 
 ;******************************************************************************;
-;MEM_TO_ASCII - Sends a character to an I/O port. It pauses for 50 microseconds
-;before sending in order for the commands to be sent successfully. Improving
-;this function requires polling the R/W port.
+;MEM_TO_ASCII - Sends a character to an I/O port.
 ;( 0 ) - Return Address             - Value         - 16 bits - Input
 ;( 2 ) - Memory Address             - Value         - 16 bits - Input
 ;( 4 ) - Second Half Address        - Reference     - 16 bits - Input

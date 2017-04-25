@@ -82,7 +82,7 @@ RIGHT_MASK          EQU     %01000000
 LEFT_SENSOR         EQU     $1800
 CENTER_SENSOR       EQU     $1801
 RIGHT_SENSOR        EQU     $1802
-DEGREE_90_TURN      EQU     !200
+DEGREE_90_TURN      EQU     !390
 DEGREE_180_TURN     EQU     !1000
 OPEN_THRESH         EQU     $20
 
@@ -106,9 +106,47 @@ MAIN                ORG     PROGRAM_START   ;Starting address for the program
 
                     MOVB    #ATD1CTL2_MASK,ATD1CTL2
 MAZE_LOOP
+                    LDAA    CENTER_SENSOR
+                    CMPA    #THRESHOLD
+                    BLO     CHECK_LEFT
+                    LDAA    RIGHT_SENSOR
+                    LDAB    LEFT_SENSOR
+                    CBA
+                    BLO     TURN_RGHT
+                    MOVB    #LEFT_MASK,PORTP
+                    BRA     DO_MOTOR
+TURN_RGHT           MOVB    #RIGHT_MASK,PORTP
+DO_MOTOR            LDD     #DEGREE_90_TURN
+                    PSHD
+                    JSR		MOVE
+                    LEAS    2,SP
+CHECK_LEFT          JSR     REFRSH_SENSORS
+                    LDAA    LEFT_SENSOR
+                    CMPA    #THRESHOLD
+                    BLO     CHECK_RIGHT
+                    MOVB    #RIGHT_MASK,PORTP
+                    LDD     #!5
+                    PSHD
+                    JSR		MOVE
+                    LEAS    2,SP
+CHECK_RIGHT         JSR     REFRSH_SENSORS
+                    LDAA    RIGHT_SENSOR
+                    CMPA    #THRESHOLD
+                    BLO     END_MAZE_LOOP
+                    MOVB    #LEFT_MASK,PORTP
+                    LDD     #!5
+                    PSHD
+                    JSR		MOVE
+                    LEAS    2,SP
+
+END_MAZE_LOOP       MOVB    #FORWARD_MASK,PORTP
+                    LDD     #!5
+                    PSHD
+                    JSR		MOVE
+                    LEAS    2,SP
                     JSR     REFRSH_SENSORS
-                    JSR     CHK_CENT_BLK
                     JMP     MAZE_LOOP
+
 
                     MOVW    #$0000,TSCR1	;Clear T1 Pulse Accumulator
                     MOVW    #$0000,TC2	    ;Clear T1 Pulse Accumulator
@@ -117,96 +155,7 @@ MAZE_LOOP
                     SWI
 END_MAIN            END
 
-;******************************************************************************;
-;CHK_CENT_BLK - Checks to see whether the center sensor is indicating the
-;presence of a wall.
-;( 0 ) - Return Address             - Value         - 16 bits - Input
-;******************************************************************************;
-CHK_CENT_BLK        LDAB    CENTER_SENSOR
-                    CMPB    #THRESHOLD
-                    BLS     CHK_RGHT        ;THRESHOLD < CENTER
-                                            ;This means there is something
-                                            ;blocking center
-                    LDAA    RIGHT_SENSOR
-                    LDAB    LEFT_SENSOR
-                    CBA
-                    BHI     TURN_LEFT
-                                            ;Center is blocked, right is open
-TURN_RGHT           MOVB    #RIGHT_MASK,PORTP
-                    LDD     #DEGREE_90_TURN
-                    PSHD
-                    JSR		MOVE
-                    LEAS    2,SP
-                    JMP     END_CHK_CENT_BLK
-                                            ;Center and Right are blocked, turn left
-TURN_LEFT           MOVB    #LEFT_MASK,PORTP
-                    LDD     #DEGREE_90_TURN
-                    PSHD
-                    JSR		MOVE
-                    LEAS    2,SP
-                    JMP     END_CHK_CENT_BLK
 
-CHK_RGHT            LDAB    RIGHT_SENSOR
-                    CMPB    #OPEN_THRESH
-                    BHI     RGHT_PRESENT
-                    JSR     RIGHT_HAND
-                    JMP     CHK_LEFT
-RGHT_PRESENT        LDAB    RIGHT_SENSOR
-                    CMPB    #THRESHOLD
-                    BLS     CHK_LEFT
-                    MOVB    #LEFT_MASK,PORTP
-                    LDD     #!5
-                    PSHD
-                    JSR		MOVE
-                    LEAS    2,SP
-
-CHK_LEFT            LDAB    LEFT_SENSOR
-                    CMPB    #OPEN_THRESH
-                    BHI     LEFT_PRESENT
-                    JMP     END_CHK_CENT_BLK
-LEFT_PRESENT        LDAB    LEFT_SENSOR
-                    CMPB    #THRESHOLD
-                    BLS     END_CHK_CENT_BLK
-
-                    MOVB    #RIGHT_MASK,PORTP
-                    LDD     #!5
-                    PSHD
-                    JSR		MOVE
-                    LEAS    2,SP
-
-END_CHK_CENT_BLK    MOVB    #FORWARD_MASK,PORTP
-                    LDD     #!5
-                    PSHD
-                    JSR		MOVEF
-                    LEAS    2,SP
-
-                    RTS
-
-
-RIGHT_HAND          MOVB	#FORWARD_MASK,PORTP
-                    LDD		#!100
-                    PSHD
-                    JSR		MOVEF
-                    LEAS    2,SP
-
-                    JSR     REFRSH_SENSORS
-
-                    LDAB    RIGHT_SENSOR
-                    CMPB    #OPEN_THRESH
-                    BLS     END_RIGHT_HAND
-
-    				MOVB    #RIGHT_MASK,PORTP
-    				LDD		#!300
-    				PSHD
-    				JSR		MOVE
-    				LEAS    2,SP
-
-    				MOVB    #FORWARD_MASK,PORTP
-    				LDD	    #!250
-    				PSHD
-    				JSR		MOVEF
-    				LEAS    2,SP
-END_RIGHT_HAND      RTS
 
 ;******************************************************************************;
 ;REFRSH_SENSORS - Refreshes the I/R Sensors
@@ -256,36 +205,6 @@ INIT_LCD            LDAA    #J_IOMASK       ;Initialize Port J
 END_INIT_LCD        RTS
 
 
-PRINT_SPOT          LDAA    #LCD_MEM_LOC_2_CMD;clear the display
-                    PSHA                    ;
-                    LDD     #PORTH          ;
-                    PSHD                    ;
-                    JSR     LCD_COMMAND     ;
-                    LEAS    3,SP            ;Clean up the stack
-
-                    LDAA    #$4C            ;'L'
-                    PSHA                    ;
-                    LDD     #PORTH          ;
-                    PSHD                    ;
-                    JSR     LCD_DATA        ;
-                    LEAS    3,SP            ;Clean up the stack
-END_PRINT_SPOT      RTS
-
-CLEAR_SPOT          LDAA    #LCD_MEM_LOC_2_CMD;clear the display
-                    PSHA                    ;
-                    LDD     #PORTH          ;
-                    PSHD                    ;
-                    JSR     LCD_COMMAND     ;
-                    LEAS    3,SP            ;Clean up the stack
-
-                    LDAA    #$20            ;' '
-                    PSHA                    ;
-                    LDD     #PORTH          ;
-                    PSHD                    ;
-                    JSR     LCD_DATA        ;
-                    LEAS    3,SP            ;Clean up the stack
-END_CLEAR_SPOT      RTS
-
 ;******************************************************************************;
 ;MOVE - Moves the robot forward for a specified number of pulses.
 ;( 0 ) - Return Address             - Value         - 16 bits - Input
@@ -303,29 +222,6 @@ FOR_PULSES          BRCLR   TFLG1,$04,FOR_PULSES
 END_FOR_PULSES
                     SEI
 END_MOVE            RTS
-
-
-;******************************************************************************;
-;MOVEF - Moves the robot forward for a specified number of pulses.
-;( 0 ) - Return Address             - Value         - 16 bits - Input
-;( 2 ) - Number of pulses           - Value         - 16 bits - Input
-;******************************************************************************;
-MOVEF               MOVW    #$0000,DATA_1	;Clear T1 Pulse Accumulator
-                    MOVW    #$0000,DATA_0	;Clear T0 Pulse Accumulator
-                    JSR     REFRSH_SENSORS
-                    LDAB    CENTER_SENSOR
-                    CMPB    #$55
-                    BHI     END_MOVEF
-                    CLI
-FOR_PULSESF         BRCLR   TFLG1,$04,FOR_PULSESF
-
-                    LDX     DATA_1
-                    CPX     2,SP
-                    BHS     END_FOR_PULSESF
-                    JMP     FOR_PULSESF
-END_FOR_PULSESF
-                    SEI
-END_MOVEF           RTS
 
 
 ;******************************************************************************;
@@ -404,14 +300,14 @@ END_BUSY_WAIT       RTS
 ;******************************************************************************;
 INIT_OUTPUT			MOVB    #TIOS_M,TIOS
 					MOVB    #TSCR1_M,TSCR1  ;Turn on the Timer System
-					MOVB    #TCTL2_M,TCTL2  ;Configure reg to turn signals off
+					MOVB    #TCTL2_M,TCTL2  ;Configur-e reg to turn signals off
 					MOVB    #OC7M_M,OC7M    ;Configure OC7 system
 					MOVB    #OC7D_M,OC7D    ;Configure OC7 system
                     MOVB    #P_IOMASK,DDRP
 
-					LDD     #$6000          ;duty
+					LDD     #$4800          ;duty
 					STD     TC2
-					LDD     #$6000
+					LDD     #$4500
 					STD     TC3
 					LDD     #$0000
 					STD     TC7             ;turns on (tc7)
@@ -441,6 +337,20 @@ INIT_INTERRUPT		LDD     #T_0_INTERRUPT
 					MOVB    #TCTL4_M,TCTL4	;Set Event cause interrupt Rise/Fall
 					MOVB    #TIE_M,TIE		;Enable Timing System Interrupts
 END_INIT_INTERRUPT	RTS
+
+;******************************************************************************;
+;DELAY_X - Causes the program to 'delay' for a long period of time. It
+;accomplishes this by simply eating clock cycles for a predetermined number of
+;this value is: ((DesiredDelayTime/(1/24E6) - 11)/4)/65535.
+;( 0 ) - Return Address    - Value     - 16 bits - Input
+;TODO - Remove dependency on global constants by making them parameters.
+;******************************************************************************;
+DELAY_X             LDX     #$FFFF
+INNER_DELAY_X       DEX
+					BNE     INNER_DELAY_X
+                    DEY
+                    BNE     DELAY_X
+END_INNER_DELAY_X   RTS
 
 ;******************************************************************************;
 ;PRINT_MEMORY - Routine for displaying the contents of a memory location to

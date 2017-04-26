@@ -108,7 +108,7 @@ MAIN                ORG     PROGRAM_START   ;Starting address for the program
 MAZE_LOOP
                     JSR     REFRSH_SENSORS
                     JSR     PRINT_SENSORS
-                    LDAA    CENTER_SENSOR
+                    LDAA    CENTER_SENSOR       ;Check for a block in the front
                     CMPA    #THRESHOLD
                     BLO     CHECK_LEFT
                     LDAA    RIGHT_SENSOR
@@ -125,7 +125,7 @@ MAZE_LOOP
                     LEAS    2,SP
                     JMP     END_MAZE_LOOP
 
-CHECK_90_TURN       LDAA    RIGHT_SENSOR
+CHECK_90_TURN       LDAA    RIGHT_SENSOR        ;Front is blocked, turn left/right
                     CMPA    #$35
                     BHI     TURN_LEFT
                     MOVB    #RIGHT_MASK,PORTP
@@ -136,7 +136,7 @@ DO_MOTOR            LDD     #DEGREE_90_TURN
                     JSR		MOVE
                     LEAS    2,SP
                     JMP     END_MAZE_LOOP
-CHECK_LEFT          LDAA    LEFT_SENSOR
+CHECK_LEFT          LDAA    LEFT_SENSOR         ;Check to see if too close to wall
                     CMPA    #THRESHOLD
                     BLO     CHECK_RIGHT
                     MOVB    #RIGHT_MASK,PORTP
@@ -145,7 +145,7 @@ CHECK_LEFT          LDAA    LEFT_SENSOR
                     JSR		MOVE
                     LEAS    2,SP
                     JMP     END_MAZE_LOOP
-CHECK_RIGHT         LDAA    RIGHT_SENSOR
+CHECK_RIGHT         LDAA    RIGHT_SENSOR        ;Check to see if too close to wall
                     CMPA    #THRESHOLD
                     BLO     CHECK_FOR_TURN
                     MOVB    #LEFT_MASK,PORTP
@@ -158,7 +158,7 @@ CHECK_FOR_TURN      LDAA    RIGHT_SENSOR
                     CMPA    #$25
                     BLO     OPEN_RIGHT
                     JMP     END_MAZE_LOOP
-OPEN_RIGHT
+OPEN_RIGHT                                  ;There is an opening, take it.
                     MOVB    #FORWARD_MASK,PORTP
                     LDD     #!600
                     PSHD

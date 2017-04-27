@@ -1,6 +1,10 @@
 # Microprocessors
 This is a collection of the files required for the EENG 420 Microprocessors Class
 
+
+The following gives some directions for a more enjoyable experience in the class...
+
+
 The interface for the provided software left a lot to be desired:
 ![ScreenShot](https://github.com/acampb311/Microprocessors/blob/master/old.PNG)
 
